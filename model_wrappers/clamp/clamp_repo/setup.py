@@ -1,6 +1,5 @@
 import os
 
-import pkg_resources
 from setuptools import setup, find_packages
 
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -13,8 +12,8 @@ setup(
     author="Philipp Seidl",
     author_email="ph.seidl92@gmail.com",
     packages=find_packages(exclude=["tests*"]),
-    install_requires="""mhnreact@git+https://github.com/ml-jku/mhn-react.git
-        clip@git+https://github.com/openai/CLIP.git
+    install_requires="""mhnreact@git+https://github.com/ml-jku/mhn-react.git@a3e0cc6fe3b8715f2e9b91352a0b66893b4aa560
+        clip@git+https://github.com/openai/CLIP.git@d05afc436d78f1c48dc0dbf8e5980a9d471f35f6
         numpy
         tqdm
         scikit-learn

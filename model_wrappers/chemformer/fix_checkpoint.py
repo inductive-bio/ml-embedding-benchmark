@@ -16,7 +16,8 @@ for file in files:
     os.rename(file, backup_filename)
     try:
         model = torch.load(backup_filename,
-                        map_location=lambda storage, loc: storage)
+                        map_location=lambda storage, loc: storage,
+                        weights_only=False)
         model["hyper_parameters"]["vocabulary_size"] = model["hyper_parameters"].pop("vocab_size")
         
         # Drop deepspeed dependencies

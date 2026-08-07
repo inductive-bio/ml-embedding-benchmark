@@ -98,11 +98,30 @@ class GroverEmbedder(HuggingMoleculesEmbedder):
     def __init__(self, model_path: str):
         super().__init__(model_path)
         self.__strip_model()
-        
+        # grover_base/grover_large OOM'd on a T4 at the base batch_size=128 on
+        # some (but not all -- memory use depends on which molecules land in
+        # a batch, not just batch size) real dataset batches; empirically
+        # confirmed stable with much lower peak memory at this size.
+        self._batch_size = 16
+        # atom_ffn_output/bond_ffn_output width varies by variant (base=800
+        # each, large=1200 each) -- measure once rather than hardcode per-model.
+        self.OUTPUT_DIM = self.process_batch(["C"]).shape[1]
+
     def process_batch(self, smiles):
         batch = self._featurizer(smiles).to(self._device)
         atom_ffn_output, bond_ffn_output = self._model(batch)
         return torch.cat([atom_ffn_output, bond_ffn_output], 1)
+
+    def process_step(self, single_smile):
+        # Base class's process_step() calls self._model(batch) directly,
+        # which for Grover returns the raw (atom_ffn_output, bond_ffn_output)
+        # tuple instead of a concatenated Tensor -- safe_batch()'s fallback
+        # path then crashed on `torch.cat(batch_values, ...)` with "expected
+        # Tensor as element 0 ... but got tuple" the moment any batch OOM'd,
+        # turning a recoverable per-molecule retry into a fatal crash for the
+        # whole run. Route through process_batch() instead, which already
+        # concatenates correctly.
+        return self.process_batch([single_smile])
 
     def __strip_model(self):
         self._model.mol_atom_from_atom_ffn = torch.nn.Identity()

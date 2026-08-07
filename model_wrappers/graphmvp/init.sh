@@ -4,7 +4,7 @@ TORCH=1.9.0
 CUDA=cpu
 
 if $INSTALL_DEP; then
-  pip install git+https://github.com/bp-kelley/descriptastorus
+  pip install git+https://github.com/bp-kelley/descriptastorus@9a190343bcd3cfd35142d378d952613bcac40797
   wget https://data.pyg.org/whl/torch-${TORCH}%2B${CUDA}/torch_cluster-1.5.9-cp37-cp37m-linux_x86_64.whl
   pip install torch_cluster-1.5.9-cp37-cp37m-linux_x86_64.whl
   wget https://data.pyg.org/whl/torch-${TORCH}%2B${CUDA}/torch_scatter-2.0.9-cp37-cp37m-linux_x86_64.whl

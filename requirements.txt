@@ -132,6 +132,7 @@ peewee==3.17.8
 pexpect==4.9.0
 pillow==11.0.0
 platformdirs==4.3.6
+polaris-lib==0.13.0  # PyPI package "polaris" is an unrelated project -- this is the Polaris Hub client, imports as `polaris`
 prometheus_client==0.21.1
 prompt_toolkit==3.0.48
 propcache==0.2.1

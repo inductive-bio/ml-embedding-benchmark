@@ -116,6 +116,20 @@ def tdc_admet_solver(module, name: str, root: str, load_graphs: bool = False) ->
     )
 
 
+def local_csv_solver(path: str, target_column: str, root: str) -> Tuple[pd.DataFrame, Splits]:
+    """Load one of the pre-cleaned OpenADMET endpoint CSVs produced by
+    scripts/prepare_openadmet_data.py (columns: molecule_id, smiles, value, split)."""
+    df = pd.read_csv(join(root, path))
+    df = df.rename(columns={"value": target_column})
+
+    splits = {
+        "train": df[df["split"] == "train"].index.tolist(),
+        "valid": [],
+        "test": df[df["split"] == "test"].index.tolist(),
+    }
+    return df, splits
+
+
 def get_tdc_group(group_name: str):
     return {
         'ADME': ADME,
@@ -157,6 +171,12 @@ def load(dataset_config: DictConfig, raw_dir: str, use_hydra: bool = True) -> Da
         )
     elif dataset_config.source.name == 'OGB':
         raw_data, splits = ogb_solver(dataset_config.name, raw_dir, load_graphs=True)
+    elif dataset_config.source.name == 'LOCAL_CSV':
+        raw_data, splits = local_csv_solver(
+            path=dataset_config.source.path,
+            target_column=dataset_config.source.target_column,
+            root=get_original_cwd() if use_hydra else '.',
+        )
     else:
         raise ValueError(f"Unknown dataset source: {dataset_config.source.name}")
 

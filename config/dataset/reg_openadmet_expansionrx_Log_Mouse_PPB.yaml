@@ -1,0 +1,8 @@
+name: reg_openadmet_expansionrx_Log_Mouse_PPB
+metric: spearmancorr  # provisional -- regression scoring/metric choice deferred, see docs/data_sources/
+task: regression
+
+source:
+  name: LOCAL_CSV
+  path: data/processed/expansionrx/Log_Mouse_PPB.csv
+  target_column: Log_Mouse_PPB
