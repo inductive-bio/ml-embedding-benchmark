@@ -153,6 +153,7 @@ def _wrapper_base_and_init(
     wrapper: str,
     base: modal.Image,
     apt_packages: list[str] = (),
+    post_init_pip: list[str] = (),
 ) -> modal.Image:
     """Copy model_wrappers/<wrapper> into the image and run its init.sh with
     INSTALL_DEP=true, exactly as embed_wrapper.sh does locally -- just once,
@@ -165,6 +166,12 @@ def _wrapper_base_and_init(
         PROJECT_ROOT / "model_wrappers" / wrapper,
         remote_path=wrapper_dir,
         copy=True,  # bake into a layer so run_commands below is allowed
+        # every wrapper now has its own local venv/ (and huggingface has
+        # venv_molformer/ too) from local pyenv runs -- multi-GB, irrelevant
+        # in the container (which gets its own via pip_install), and slow or
+        # fatal to upload wholesale. Same exclusion as modal_embed_unimol.py/
+        # modal_embed_selformer.py, generalized to any venv-like dir name.
+        ignore=["venv", "venv/**", "venv_*", "venv_*/**"],
     )
     # `-e` (errexit) is passed to bash *invoking* init.sh, not added inside
     # init.sh itself -- none of these scripts declare `set -e`, so a failing
@@ -174,6 +181,12 @@ def _wrapper_base_and_init(
     # `unzip` that succeeds independently). That silently baked broken images
     # for several wrappers before this was added.
     image = image.run_commands(f"cd {wrapper_dir} && INSTALL_DEP=true bash -e init.sh")
+    if post_init_pip:
+        # some wrappers' own init.sh installs pull a dependency past a pin
+        # _install_base_requirements already asserted (e.g. unimol's `pip
+        # install unimol_tools --upgrade` pulls numpy back past <2.0) --
+        # re-assert after the fact, same as the local run recipe does.
+        image = image.pip_install(*post_init_pip)
     return image
 
 
@@ -216,6 +229,23 @@ MODAL_PYTHON_VERSION = {
 _UNFIXED_LEGACY_PYTHON_WRAPPERS = {"graphfp", "graphmvp", "mol-r", "molbert"}
 
 
+# Per-wrapper build overrides beyond the shared _wrapper_base_and_init path.
+# unimol needs both, confirmed live in scripts/modal_embed_unimol.py:
+# - apt packages: unimol_tools imports rdkit.Chem.PandasTools -> ... ->
+#   rdkit.Chem.Draw at import time (side effect only, no rendering happens),
+#   which needs X11 libs debian_slim doesn't ship (`ImportError:
+#   libXrender.so.1: cannot open shared object file`).
+# - post_init_pip: unimol_tools' own `pip install --upgrade` in init.sh pulls
+#   numpy back past the <2.0 pin _install_base_requirements asserted, same
+#   ABI-incompatibility crash documented there.
+_APT_PACKAGES_FOR = {
+    "unimol": ["libxrender1", "libxext6", "libsm6"],
+}
+_POST_INIT_PIP_FOR = {
+    "unimol": ["numpy<2.0.0"],
+}
+
+
 def build_image(wrapper: str) -> modal.Image:
     if wrapper not in MODAL_PYTHON_VERSION:
         raise ValueError(
@@ -224,7 +254,12 @@ def build_image(wrapper: str) -> modal.Image:
         )
 
     base = modal.Image.debian_slim(python_version=MODAL_PYTHON_VERSION[wrapper])
-    image = _wrapper_base_and_init(wrapper, base)
+    image = _wrapper_base_and_init(
+        wrapper,
+        base,
+        apt_packages=_APT_PACKAGES_FOR.get(wrapper, []),
+        post_init_pip=_POST_INIT_PIP_FOR.get(wrapper, []),
+    )
 
     return _repo_mount(image)
 
