@@ -23,7 +23,7 @@ requirements = [
     "boto3",
     "botocore",
     "tqdm",
-    "due @ git+https://github.com/y0ast/DUE.git",
+    "due @ git+https://github.com/y0ast/DUE.git@f29c990811fd6a8e76215f17049e6952ef5ea0c9",
 ]
 
 setup(

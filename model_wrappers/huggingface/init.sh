@@ -1,7 +1,10 @@
 #!/bin/bash
 
 if $INSTALL_DEP; then
-    pip install transformers[torch] selfies==2.1.1 rdkit
+    # transformers pinned to keep the already-verified ChemBERTa/ChemGPT/ChemFM
+    # variants stable -- MolFormer needs transformers>=5.0.0 instead (see
+    # model_wrappers/huggingface/venv_molformer/), no single version supports both.
+    pip install "transformers[torch]==4.46.3" selfies==2.1.1 rdkit
 
     pip install sentencepiece protobuf sentence-transformers
 

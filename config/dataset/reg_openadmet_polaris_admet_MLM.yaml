@@ -1,0 +1,8 @@
+name: reg_openadmet_polaris_admet_MLM
+metric: spearmancorr  # provisional -- regression scoring/metric choice deferred, see docs/data_sources/
+task: regression
+
+source:
+  name: LOCAL_CSV
+  path: data/processed/polaris_admet/MLM.csv
+  target_column: MLM

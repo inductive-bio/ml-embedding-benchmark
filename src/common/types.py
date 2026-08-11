@@ -116,7 +116,7 @@ class Dataset:
     def labels(self) -> pd.DataFrame:
         id_cols = [x for x in self.data.columns if 'id' in x.lower() or 'split' in x.lower()]
         
-        return self.data.drop(columns=(['smiles', 'graph'] + id_cols))
+        return self.data.drop(columns=(['smiles', 'graph'] + id_cols), errors='ignore')
 
     def serialize_legacy(self, path):
         import json

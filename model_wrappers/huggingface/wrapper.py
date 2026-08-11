@@ -15,7 +15,6 @@ from transformers import AutoModel, AutoTokenizer, RobertaConfig, RobertaTokeniz
 from joblib import Parallel, delayed
 import multiprocessing
 from sentence_transformers import SentenceTransformer
-from transformers.modeling_utils import SequenceSummary
 
 
 

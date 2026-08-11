@@ -32,11 +32,17 @@ class GeneralGNNWrapper(SmilesEmbedder):
             'gnn_type': "gin"
         }
         
-        if task == 'classification':
-            log.info("Using classification model")
-            self._base_model = GNN(**model_params)
-        else:
-            self._base_model = GNNComplete(**model_params)
+        # These baseline strategies (AM/Contextual/CP/EP/GPT_TNN/GraphCL/IG/Motif)
+        # were only ever released as checkpoints for the simple-feature `GNN`
+        # architecture, regardless of what downstream task this benchmark
+        # happens to be extracting embeddings for -- `task` here describes the
+        # *dataset*, not which architecture a given checkpoint was trained
+        # with, so branching on it picked `GNNComplete` for every regression
+        # dataset and threw a state_dict key mismatch (confirmed loading the
+        # same checkpoint against `GNN` with task='classification' works).
+        # `GraphMVPWrapper` below is unaffected -- it has separate simple/
+        # complete-feature checkpoint files per task and picks correctly.
+        self._base_model = GNN(**model_params)
         self._model_path = join(get_original_cwd(), "model_wrappers/graphmvp/weights/", f"{model_name.split('-')[0]}.pth")
         self._base_model.load_state_dict(torch.load(self._model_path, map_location=torch.device('cpu')))
     

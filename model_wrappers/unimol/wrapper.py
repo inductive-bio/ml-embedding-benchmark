@@ -9,30 +9,43 @@ from unimol_tools.predictor import UniMolRepr
 
 
 
+def _extract_cls_repr(unimol_repr) -> np.ndarray:
+    # get_repr(..., return_atomic_reprs=False) returns a plain list of
+    # per-molecule arrays in the currently-installed unimol_tools version,
+    # not the dict-with-"cls_repr"-key shape older code (and this library's
+    # own docstring for return_atomic_reprs=True) implies -- handle both so
+    # a future unimol_tools upgrade that reintroduces the dict shape doesn't
+    # silently break this again.
+    if isinstance(unimol_repr, dict):
+        return np.array(unimol_repr["cls_repr"])
+    return np.array(unimol_repr)
+
+
 class UniMolWrapper(SmilesEmbedder):
     def __init__(self, model_name: str):
         torch.cuda.empty_cache()
         self._model_name = model_name
-        use_cuda = False
-        # if 'cuda' in get_device().type:
-            # use_cuda = True
-        # log.info(f"Using device: {get_device()}")
+        use_cuda = 'cuda' in get_device().type
+        log.info(f"Using device: {get_device()}")
         self._model = UniMolRepr(model_name=model_name, use_gpu=use_cuda, use_cuda=use_cuda)
-        self._output_dim = None
-        
+        # Determined via a throwaway call rather than left None until the
+        # first real batch succeeds -- safe_batch's NaN-fallback path needs
+        # this even if the very first molecule it ever sees fails.
+        self._output_dim = _extract_cls_repr(self._model.get_repr(["C"], return_atomic_reprs=False)).shape[1]
+
     def forward_batch(self, smiles_batch):
         log.warning(type(smiles_batch))
         if not isinstance(smiles_batch, list):
             smiles_batch = smiles_batch.tolist()
         unimol_repr = self._model.get_repr(smiles_batch, return_atomic_reprs=False)
-        repr_obj = np.array(unimol_repr["cls_repr"])
+        repr_obj = _extract_cls_repr(unimol_repr)
         self._output_dim = repr_obj.shape[1]
         return repr_obj
-    
+
     def forward_step(self, single_smile):
         batch = [single_smile]
         unimol_repr = self._model.get_repr(batch, return_atomic_reprs=False)
-        repr_obj = np.array(unimol_repr["cls_repr"])
+        repr_obj = _extract_cls_repr(unimol_repr)
         self._output_dim = repr_obj.shape[1]
         return repr_obj
     

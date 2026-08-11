@@ -1,0 +1,8 @@
+name: reg_openadmet_polaris_potency_pIC50_MERS_CoV_Mpro
+metric: spearmancorr  # provisional -- regression scoring/metric choice deferred, see docs/data_sources/
+task: regression
+
+source:
+  name: LOCAL_CSV
+  path: data/processed/polaris_potency/pIC50_MERS_CoV_Mpro.csv
+  target_column: pIC50_MERS_CoV_Mpro

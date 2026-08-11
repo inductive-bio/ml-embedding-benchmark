@@ -1,0 +1,8 @@
+name: reg_openadmet_pxr_pEC50
+metric: spearmancorr  # provisional -- regression scoring/metric choice deferred, see docs/data_sources/
+task: regression
+
+source:
+  name: LOCAL_CSV
+  path: data/processed/pxr/pEC50.csv
+  target_column: pEC50

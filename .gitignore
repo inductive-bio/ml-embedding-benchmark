@@ -4,6 +4,7 @@
 
 /data/
 /dataset/
+/data_repos/
 outputs/
 model_weights/
 multirun/
@@ -13,6 +14,7 @@ debug.py
 
 # Venv
 **/venv/
+**/venv_*/
 
 # file types
 *.log
@@ -20,7 +22,7 @@ debug.py
 
 # Model weights
 **/SELFormer/
-**/Selformer-Lite/
+**/SELFormer-Lite/
 *.ckpt
 
 
@@ -29,6 +31,7 @@ debug.py
 .DS_Store
 .AppleDouble
 .LSOverride
+__MACOSX/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
