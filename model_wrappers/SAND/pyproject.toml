@@ -1,0 +1,140 @@
+[build-system]
+requires = [
+  "setuptools >= 64",
+  "setuptools_scm[toml]>=6.2",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sand"
+dynamic = ["version"]
+description = "SAND: Shape Aware Neural Descriptor — learning compressed shape-aware molecular representations for virtual screening"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "torch",
+  "rdkit",
+  "jsonargparse[signatures]>=4.18.0",
+  "lightning",
+  "torch_geometric",
+  "pandas",
+  "polars",
+  "numpy",
+  "scipy",
+  "tqdm",
+  "matplotlib",
+  "zarr",
+  "h5py",
+  "hdf5plugin",
+  "torchmetrics",
+  "universal_pathlib",
+  "py3Dmol",
+  "pyarrow",
+  "tables",
+  "pylance",
+]
+
+[project.optional-dependencies]
+cpu = [
+  "faiss-cpu",
+]
+gpu = [
+  "faiss-gpu-cu12; sys_platform == 'linux'",
+]
+dev = [
+  "pytest >=6",
+  "pytest-cov",
+  "mypy",
+  "ruff",
+]
+
+[project.scripts]
+sand-train = "sand.main:cli_main"
+sand-enamine-bz2-to-lance-db = "sand.index.data:build_lance_store_cli"
+
+[tool.uv]
+environments = [
+  "sys_platform == 'darwin'",
+  "sys_platform == 'linux'",
+]
+conflicts = [
+  [
+    { extra = "cpu" },
+    { extra = "gpu" },
+  ],
+]
+
+# Some older-driver GPU nodes only support CUDA <= 12.8, while PyPI's plain
+# "torch" wheel may default to a newer CUDA build than your driver supports.
+# Pin torch to PyTorch's own cu128 wheel index on Linux for broad driver
+# compatibility; adjust/remove this if your environment needs a different
+# CUDA build.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
+]
+
+[tool.setuptools.packages.find]
+include = ["sand*"]
+
+[tool.setuptools_scm]
+write_to = "sand/_version.py"
+version_scheme = "post-release"
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib","-v"]
+
+[tool.coverage.run]
+source = ["sand"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "if TYPE_CHECKING:",
+  "if MYPY:",
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = false
+exclude = "tests|examples|benchmark"
+explicit_package_bases = true
+
+[tool.black]
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.mypy_cache
+    | \.venv
+    | venv.*
+    | build
+    | dist
+    | ci
+  )/
+)
+'''
+
+[tool.isort]
+profile = "black"
+py_version = "311"
+
+[tool.bandit]
+skips = ["B603", "B310", "B607", "B404"]
+exclude = "./tests/test_*.py"
+
+[tool.bandit.assert_used]
+skips = ["./tests/test_*.py"]

@@ -75,11 +75,4 @@ bash embed_wrapper.sh model_wrappers/your_model
 
 This will create embeddings for all datasets and store them in the embedding directory, by default: `data/embedded/dataset_name/model_name.(joblib|json)`. You can change the embedding directory by modifying the [embedding config](../config/embedding/default.yaml).
 
-To evaluate the scores on the datasets using the predefined model grid, please run the following command:
-
-```sh
-./run_scoring.sh your_model_name
-```
-
-
-After that, the results will be stored in the `data/meta.db` SQLite database.
+To evaluate the embeddings on the datasets, use `scripts/compute_prediction_errors.py --embedding your_model_name --method <rf|ridge|knn|tabicl|tabpfn>` (see the [readme](../readme.md) for the full scoring/ranking pipeline).

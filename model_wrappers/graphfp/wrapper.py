@@ -98,13 +98,10 @@ class GraphFPWrapperFrag(SmilesEmbedder):
             try:
                 for node_i in tree.nodes:
                     node = tree.get_node(node_i)
-                    # for atom in node, set map
                     for atom_i in node.atom_mapping.keys():
                         map[atom_i] = node_i
-                        # extend frag
                         frag[node_i][0] = self._vocab_dict[node.smiles]
                 for src, dst in tree.edges:
-                    # extend edge index
                     frag_edge_index[0].extend([src, dst])
                     frag_edge_index[1].extend([dst, src])
             except KeyError as e:
@@ -188,7 +185,7 @@ class GraphFPWrapperFrag(SmilesEmbedder):
     
     @property
     def device_used(self):
-        return "cpu"  # GraphFP does not use GPU, so we return "cpu"
+        return "cpu"
 
 
 def get_embedder(name, task, **_kwargs):

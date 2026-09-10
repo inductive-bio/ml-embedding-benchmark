@@ -1,9 +1,0 @@
-name: DILI
-metric: roc_auc
-task: classification
-
-source:
-  name: TDC
-  benchmark: admet
-  group: TOX
-

@@ -22,7 +22,7 @@ class CDDDEmbedder(SmilesEmbedder):
     
     @property
     def device_used(self):
-        return "cpu"  # CDDD does not use GPU, so we return "cpu"
+        return "cpu"
     
     
 def get_embedder(name, **kwargs) -> SmilesEmbedder:

@@ -1,0 +1,389 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "27427f9d47ea9b00f0b0cd88ae615dca7063cecc29592b92e76b8330c2b6ea58"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.11"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://pypi.org/simple",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {
+        "GitPython": {
+            "version": "==3.1.50",
+            "index": "pypi"
+        },
+        "Jinja2": {
+            "version": "==3.1.6",
+            "index": "pypi"
+        },
+        "Mako": {
+            "version": "==1.3.12",
+            "index": "pypi"
+        },
+        "Markdown": {
+            "version": "==3.10.2",
+            "index": "pypi"
+        },
+        "MarkupSafe": {
+            "version": "==3.0.3",
+            "index": "pypi"
+        },
+        "PySocks": {
+            "version": "==1.7.1",
+            "index": "pypi"
+        },
+        "PyYAML": {
+            "version": "==6.0.3",
+            "index": "pypi"
+        },
+        "Pygments": {
+            "version": "==2.20.0",
+            "index": "pypi"
+        },
+        "SQLAlchemy": {
+            "version": "==2.0.50",
+            "index": "pypi"
+        },
+        "Werkzeug": {
+            "version": "==3.1.8",
+            "index": "pypi"
+        },
+        "absl-py": {
+            "version": "==2.4.0",
+            "index": "pypi"
+        },
+        "alembic": {
+            "version": "==1.18.4",
+            "index": "pypi"
+        },
+        "annotated-types": {
+            "version": "==0.7.0",
+            "index": "pypi"
+        },
+        "brotlipy": {
+            "version": "==0.7.0",
+            "index": "pypi"
+        },
+        "certifi": {
+            "version": "==2026.5.20",
+            "index": "pypi"
+        },
+        "cffi": {
+            "version": "==2.0.0",
+            "index": "pypi"
+        },
+        "chardet": {
+            "version": "==3.0.4",
+            "index": "pypi"
+        },
+        "charset-normalizer": {
+            "version": "==3.4.7",
+            "index": "pypi"
+        },
+        "click": {
+            "version": "==8.4.1",
+            "index": "pypi"
+        },
+        "colorama": {
+            "version": "==0.4.6",
+            "index": "pypi"
+        },
+        "colorlog": {
+            "version": "==6.10.1",
+            "index": "pypi"
+        },
+        "contourpy": {
+            "version": "==1.3.3",
+            "index": "pypi"
+        },
+        "cryptography": {
+            "version": "==48.0.0",
+            "index": "pypi"
+        },
+        "cycler": {
+            "version": "==0.12.1",
+            "index": "pypi"
+        },
+        "descriptastorus": {
+            "version": "==2.7.0",
+            "index": "pypi"
+        },
+        "exceptiongroup": {
+            "version": "==1.3.1",
+            "index": "pypi"
+        },
+        "filelock": {
+            "version": "==3.29.1",
+            "index": "pypi"
+        },
+        "fonttools": {
+            "version": "==4.63.0",
+            "index": "pypi"
+        },
+        "freetype-py": {
+            "version": "==2.3.0",
+            "index": "pypi"
+        },
+        "fsspec": {
+            "version": "==2026.4.0",
+            "index": "pypi"
+        },
+        "gitdb": {
+            "version": "==4.0.12",
+            "index": "pypi"
+        },
+        "gmpy2": {
+            "version": "==2.3.0",
+            "index": "pypi"
+        },
+        "greenlet": {
+            "version": "==3.5.1",
+            "index": "pypi"
+        },
+        "grpcio": {
+            "version": "==1.81.0",
+            "index": "pypi"
+        },
+        "idna": {
+            "version": "==2.9",
+            "index": "pypi"
+        },
+        "importlib_metadata": {
+            "version": "==9.0.0",
+            "index": "pypi"
+        },
+        "iniconfig": {
+            "version": "==2.3.0",
+            "index": "pypi"
+        },
+        "joblib": {
+            "version": "==1.5.3",
+            "index": "pypi"
+        },
+        "kiwisolver": {
+            "version": "==1.5.0",
+            "index": "pypi"
+        },
+        "matplotlib": {
+            "version": "==3.10.9",
+            "index": "pypi"
+        },
+        "mkl-service": {
+            "version": "==2.5.2",
+            "index": "pypi"
+        },
+        "mkl_fft": {
+            "version": "==2.2.0",
+            "index": "pypi"
+        },
+        "mkl_random": {
+            "version": "==1.3.0",
+            "index": "pypi"
+        },
+        "mpmath": {
+            "version": "==1.4.1",
+            "index": "pypi"
+        },
+        "munkres": {
+            "version": "==1.1.4",
+            "index": "pypi"
+        },
+        "narwhals": {
+            "version": "==2.22.1",
+            "index": "pypi"
+        },
+        "networkx": {
+            "version": "==3.6.1",
+            "index": "pypi"
+        },
+        "numpy": {
+            "version": "==2.4.6",
+            "index": "pypi"
+        },
+        "optree": {
+            "version": "==0.19.1",
+            "index": "pypi"
+        },
+        "optuna": {
+            "version": "==4.9.0",
+            "index": "pypi"
+        },
+        "packaging": {
+            "version": "==26.2",
+            "index": "pypi"
+        },
+        "pandas": {
+            "version": "==3.0.3",
+            "index": "pypi"
+        },
+        "pandas-flavor": {
+            "version": "==0.8.1",
+            "index": "pypi"
+        },
+        "pillow": {
+            "version": "==12.2.0",
+            "index": "pypi"
+        },
+        "pip": {
+            "version": "==26.1.2",
+            "index": "pypi"
+        },
+        "platformdirs": {
+            "version": "==4.10.0",
+            "index": "pypi"
+        },
+        "pluggy": {
+            "version": "==1.6.0",
+            "index": "pypi"
+        },
+        "protobuf": {
+            "version": "==6.33.5",
+            "index": "pypi"
+        },
+        "pyOpenSSL": {
+            "version": "==19.1.0",
+            "index": "pypi"
+        },
+        "pycairo": {
+            "version": "==1.29.0",
+            "index": "pypi"
+        },
+        "pycparser": {
+            "version": "==3.0",
+            "index": "pypi"
+        },
+        "pydantic": {
+            "version": "==2.13.4",
+            "index": "pypi"
+        },
+        "pydantic_core": {
+            "version": "==2.46.4",
+            "index": "pypi"
+        },
+        "pyparsing": {
+            "version": "==3.3.2",
+            "index": "pypi"
+        },
+        "pytest": {
+            "version": "==9.0.3",
+            "index": "pypi"
+        },
+        "python-dateutil": {
+            "version": "==2.9.0.post0",
+            "index": "pypi"
+        },
+        "rdkit": {
+            "version": "==2025.9.1",
+            "index": "pypi"
+        },
+        "reportlab": {
+            "version": "==4.5.1",
+            "index": "pypi"
+        },
+        "requests": {
+            "version": "==2.24.0",
+            "index": "pypi"
+        },
+        "rlPyCairo": {
+            "version": "==0.4.0",
+            "index": "pypi"
+        },
+        "scikit-learn": {
+            "version": "==1.9.0",
+            "index": "pypi"
+        },
+        "scipy": {
+            "version": "==1.17.1",
+            "index": "pypi"
+        },
+        "sentry-sdk": {
+            "version": "==2.61.1",
+            "index": "pypi"
+        },
+        "setuptools": {
+            "version": "==81.0.0",
+            "index": "pypi"
+        },
+        "six": {
+            "version": "==1.17.0",
+            "index": "pypi"
+        },
+        "smmap": {
+            "version": "==5.0.3",
+            "index": "pypi"
+        },
+        "sympy": {
+            "version": "==1.14.0",
+            "index": "pypi"
+        },
+        "tensorboard": {
+            "version": "==2.20.0",
+            "index": "pypi"
+        },
+        "tensorboard_data_server": {
+            "version": "==0.7.0",
+            "index": "pypi"
+        },
+        "threadpoolctl": {
+            "version": "==3.6.0",
+            "index": "pypi"
+        },
+        "tomli": {
+            "version": "==2.4.1",
+            "index": "pypi"
+        },
+        "torch": {
+            "version": "==2.9.1",
+            "index": "pypi"
+        },
+        "tqdm": {
+            "version": "==4.68.1",
+            "index": "pypi"
+        },
+        "triton": {
+            "version": "==3.5.1",
+            "index": "pypi"
+        },
+        "typing-inspection": {
+            "version": "==0.4.2",
+            "index": "pypi"
+        },
+        "typing_extensions": {
+            "version": "==4.15.0",
+            "index": "pypi"
+        },
+        "unicodedata2": {
+            "version": "==17.0.1",
+            "index": "pypi"
+        },
+        "urllib3": {
+            "version": "==1.25.9",
+            "index": "pypi"
+        },
+        "wandb": {
+            "version": "==0.26.1",
+            "index": "pypi"
+        },
+        "wheel": {
+            "version": "==0.47.0",
+            "index": "pypi"
+        },
+        "xarray": {
+            "version": "==2026.4.0",
+            "index": "pypi"
+        },
+        "zipp": {
+            "version": "==4.1.0",
+            "index": "pypi"
+        }
+    },
+    "develop": {}
+}

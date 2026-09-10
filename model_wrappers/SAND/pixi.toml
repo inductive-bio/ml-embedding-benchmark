@@ -1,0 +1,100 @@
+# pixi.toml — conda-based environment for GPUs that the pip `faiss-gpu-cu12`
+# wheel does NOT support (Hopper / H100 = sm_90, and newer).
+#
+# Why this exists alongside uv:
+#   * uv (see pyproject.toml) is the default dev/install path. Its `gpu` extra
+#     pulls the PyPI `faiss-gpu-cu12` wheel, which only ships kernels for
+#     and L40S nodes, but it errors on H100 with CUDA 209 "no kernel image".
+#   * pixi installs the *conda* `faiss-gpu` build (pytorch channel), which is
+#     compiled with a broad CUDA arch list that INCLUDES Hopper (sm_90).
+#
+# How the two stay conflict-free:
+#   faiss is an OPTIONAL dependency in pyproject.toml (the `cpu` / `gpu`
+#   extras). Below we install SAND editable WITHOUT selecting either extra, so
+#   no pip faiss is installed — the only faiss in this env is the conda
+#   `faiss-gpu`. pixi maps conda packages to their PyPI names, so SAND's base
+#   `torch` requirement is satisfied by the conda `pytorch` (one consistent
+#   CUDA stack) rather than a second PyPI torch.
+#
+# Usage:
+#   pixi install            # resolve + create the env
+#   pixi shell              # drop into the env
+#   pixi run python ...     # run a one-off command
+#
+# Keep uv for CPU / L40S work; reach for pixi only when you need H100 GPU FAISS.
+
+[workspace]
+name = "sand"
+# conda-forge MUST come first: under strict channel priority the general
+# package stack (pillow/libjpeg-turbo → rdkit, numpy, …) has to resolve from
+# conda-forge. `pytorch` is kept only for `faiss-gpu`, `nvidia` for CUDA libs.
+channels = ["conda-forge", "pytorch", "nvidia"]
+platforms = ["linux-64"]
+
+# Declare that the target machine has a CUDA driver. Without this, solving on a
+# GPU-less login node fails: conda can't find the `__cuda`
+# virtual package and rejects every cuda* build. This lets you resolve/install
+# on the login node and run on the GPU compute nodes.
+[system-requirements]
+cuda = "12"
+
+[dependencies]
+python = "3.12.*"
+# Keep CUDA consistent with [system-requirements] above so the solve doesn't
+# thrash trying CUDA-13 builds that get rejected against `__cuda 12`. If your
+# driver supports CUDA 13 (check `nvidia-smi`), bump BOTH this and the
+# system-requirements `cuda` to 13 together to get the newest faiss/torch.
+cuda-version = "12.*"
+# Force the CUDA build of torch. Without this, conda-forge happily resolves a
+# `cpu_mkl_*` build and you get no GPU. `pytorch-gpu` is conda-forge's
+# metapackage that pulls the matching cuda* build of pytorch.
+pytorch = "*"
+pytorch-gpu = "*"
+# The whole point: conda faiss-gpu HAS Hopper (sm_90) kernels.
+faiss-gpu = "*"
+# faiss (pytorch channel) is built against Intel MKL. The CUDA torch build
+# doesn't pull MKL in like the `cpu_mkl_*` build does, so add it explicitly —
+# otherwise `import faiss` fails with `libmkl_intel_lp64.so.2: cannot open ...`.
+# Pin <2026: mkl 2026 bumped the soname to libmkl_intel_lp64.so.3, but faiss
+# 1.10 links .so.2, so the newest mkl breaks the import at runtime.
+mkl = ">=2024,<2026"
+# IMPORTANT: install the whole numpy-C-extension / compiled scientific stack
+# from CONDA, not PyPI. If pip installs a second numpy/scipy alongside conda's
+# torch, you get "numpy._core.multiarray failed to import" ABI crashes. Pixi
+# maps these conda packages to their PyPI names, so SAND's requirements (see
+# pyproject.toml) are marked satisfied and pip does NOT reinstall them.
+numpy = "*"
+scipy = "*"
+pandas = "*"
+polars = "*"
+pyarrow = "*"
+h5py = "*"
+hdf5plugin = "*"
+pytables = "*"
+zarr = "*"
+matplotlib = "*"
+rdkit = "*"
+torchmetrics = "*"
+lightning = "*"
+pytorch_geometric = "*"
+tqdm = "*"
+py3dmol = "*"
+universal_pathlib = "*"
+
+[pypi-dependencies]
+# Editable SAND WITHOUT the cpu/gpu extras → no pip faiss is pulled in. Every
+# numpy-ABI-sensitive dep is provided by conda above; pip only needs to install
+# SAND itself plus the few packages that aren't on conda channels.
+sand = { path = ".", editable = true }
+jsonargparse = { version = ">=4.18.0", extras = ["signatures"] }
+pylance = "*"
+
+[feature.dev.pypi-dependencies]
+pytest = ">=6"
+pytest-cov = "*"
+mypy = "*"
+ruff = "*"
+
+[environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }

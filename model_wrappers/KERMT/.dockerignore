@@ -1,0 +1,31 @@
+# Large model checkpoints — never needed in the image; mount at runtime via
+# kermt_container.sh --ckpt instead.
+model/
+
+# Git metadata.
+.git/
+.gitignore
+.gitmodules
+
+# Python caches.
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Runtime artifacts created by agent workflows.
+runs/
+
+# Agent/editor metadata that should not ride along inside the container.
+.claude/
+CLAUDE.md
+CODEX_MEMORY.md
+.vscode/
+.idea/
+
+# OS-level noise.
+.DS_Store
+Thumbs.db
+
+# Dockerfile is read by `docker build` directly; no need to re-COPY it into /code.
+Dockerfile
+.dockerignore

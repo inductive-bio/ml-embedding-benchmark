@@ -48,7 +48,7 @@ DATASETS = [
     "reg_openadmet_expansionrx_Log_Mouse_BPB",
     "reg_openadmet_expansionrx_Log_Mouse_MPB",
     "reg_openadmet_expansionrx_Log_Mouse_PPB",
-    "reg_openadmet_expansionrx_LogS",
+    "reg_openadmet_expansionrx_KSOL",
     "reg_openadmet_polaris_admet_HLM",
     "reg_openadmet_polaris_admet_KSOL",
     "reg_openadmet_polaris_admet_LogD",
@@ -97,7 +97,7 @@ def build_image() -> modal.Image:
     )
 
 
-def _run_embed_unimol(dataset_name: str) -> str:
+def _run_embed_unimol(dataset_name: str, force: bool = False) -> str:
     import os
     import subprocess
 
@@ -117,7 +117,7 @@ def _run_embed_unimol(dataset_name: str) -> str:
         "--multirun",
         "+experiment=unimol",
         f"+dataset={dataset_name}",
-        "++cache=true",
+        f"++cache={'false' if force else 'true'}",
     ]
 
     result = subprocess.run(cmd, cwd=project_root, env=env, capture_output=True, text=True)
@@ -143,12 +143,16 @@ embed_unimol = app.function(
 
 
 @app.local_entrypoint()
-def main(datasets: str = ",".join(DATASETS), modal_gpu: str = "", modal_cpu: float = 0):
+def main(datasets: str = ",".join(DATASETS), modal_gpu: str = "", modal_cpu: float = 0, force: bool = False):
     """--datasets: comma-separated dataset names (default: all 17). One Modal
     container per dataset, spawned concurrently -- both unimolv1/v2 run inside
     each container.
     --modal-gpu: override GPU type (default: T4). Pass "none" for CPU-only.
-    --modal-cpu: override CPU core count (default: 4)."""
+    --modal-cpu: override CPU core count (default: 4).
+    --force: recompute and overwrite even if a cached .joblib already exists
+    -- needed to regenerate files written before the init.sh pandas<2 pin was
+    removed (those pickle with pandas 1.x internals the main venv's pandas 2.x
+    can't unpickle)."""
     selected = [d.strip() for d in datasets.split(",") if d.strip()]
     unknown = set(selected) - set(DATASETS)
     if unknown:
@@ -163,7 +167,7 @@ def main(datasets: str = ",".join(DATASETS), modal_gpu: str = "", modal_cpu: flo
     if options:
         fn = fn.with_options(**options)
 
-    calls = {d: fn.spawn(d) for d in selected}
+    calls = {d: fn.spawn(d, force=force) for d in selected}
     for d, call in calls.items():
         try:
             print(call.get())

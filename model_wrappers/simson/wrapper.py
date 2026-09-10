@@ -56,7 +56,7 @@ class SimSonWrapper(SmilesEmbedder):
     
     @property
     def device_used(self):
-        return self._device.type.split(':')[0]  # Returns 'cpu' or 'cuda'
+        return self._device.type.split(':')[0]
     
 
 def get_embedder(name, **_kwargs) -> SmilesEmbedder:

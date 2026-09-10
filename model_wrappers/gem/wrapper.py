@@ -53,7 +53,7 @@ class GEMEmbedder(SmilesEmbedder):
 
     def forward(self, smiles) -> np.ndarray:
         repr = [
-            self.safe_step(smile)  # Use safe_step to handle errors gracefully
+            self.safe_step(smile)
             for smile in tqdm(smiles)
         ]
         return np.vstack(repr)
@@ -64,7 +64,7 @@ class GEMEmbedder(SmilesEmbedder):
     
     @property
     def device_used(self):
-        return "cpu"  # GEM does not use GPU, so we return "cpu"
+        return "cpu"
 
 
 def get_embedder(model_name, task, **kwargs):

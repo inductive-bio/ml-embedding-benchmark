@@ -18,9 +18,6 @@ except ImportError:
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
-        """
-        if input object is a ndarray it will be converted into a dict holding dtype, shape and the data base64 encoded
-        """
         if isinstance(obj, torch.Tensor):
             data_b64 = base64.b64encode(obj.cpu().numpy().tobytes()).decode('utf-8')
             return dict(__torch_tensor__=data_b64,
@@ -38,12 +35,6 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 def json_numpy_obj_hook(dct):
-    """
-    Decodes a previously encoded numpy ndarray or pandas DataFrame
-    with proper shape and dtype
-    :param dct: (dict) json encoded ndarray or DataFrame
-    :return: (ndarray or DataFrame) if input was an encoded ndarray or DataFrame
-    """
     if isinstance(dct, dict) and '__ndarray__' in dct:
         data = base64.b64decode(dct['__ndarray__'])
         return np.frombuffer(data, dct['dtype']).reshape(dct['shape'])
@@ -61,8 +52,6 @@ class EmbeddingConfig:
     embedded_directory: str
     predictions_directory: str
     data_directory: str
-    clock_directory: str
-    database: str
     prepared_directory: str
     svd_directory: str
     max_invalid_embeddings: int
@@ -82,10 +71,6 @@ class Dataset:
     splits: Any
 
     def filter_out_problematic_molecules(self, illegal_smiles: List[str]):
-        """
-        Filters out rows from the dataset where the 'smiles' column contains any of the illegal SMILES strings.
-        :param illegal_smiles: List of illegal SMILES strings to filter out.
-        """
         if 'smiles' not in self.data.columns:
             raise ValueError("Dataset does not contain a 'smiles' column.")
         
@@ -146,11 +131,6 @@ class EmbeddedDataset:
     y: pd.DataFrame
     
     def remove_failed_embeddings(self) -> int:
-        """Performs validation of missing values, drop failed molecules and return number of invalid samples.
-
-        Returns:
-            int: number of invalid samples
-        """
         print(f"Shape of X: {self.X.shape}")
         if len(self.X.shape) == 1:
             log.warning(f"Dataset '{self.name}' has only one dimension in X, reshaping to 2D.")

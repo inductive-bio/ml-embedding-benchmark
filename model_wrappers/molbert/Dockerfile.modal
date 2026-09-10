@@ -1,0 +1,45 @@
+# Modal image for fine-tuning MolBERT (model_wrappers/molbert/finetune.py).
+#
+# Modal requires the container's primary interpreter to be Python >=3.10, but
+# molbert_repo/setup.py pins torch==1.4.0/pytorch-lightning==0.8.4/
+# transformers==3.5.1, none of which ship a wheel for cp310+ -- unlike this
+# repo's other wrappers (fingerprints/mol2vec/clamp/coati/gem/
+# huggingmolecules), whose deps DO have cp310/cp311 wheels, so bumping this
+# wrapper's own Python isn't an option.
+#
+# So the final image's primary python stays 3.11 (Modal-compatible), and a
+# fully separate Python 3.7 install lives side by side at /opt/py37, used
+# only via subprocess for molbert's actual training/inference code -- copied
+# straight out of the official python:3.7-bullseye image rather than
+# compiled from source (~72s image build vs. ~28 minutes to `./configure
+# --enable-optimizations && make`, for an identical result). Both stages are
+# pinned to the same Debian codename (bullseye) so the copied interpreter
+# links against the same glibc/libssl/libsqlite3 the final image ships.
+#
+# Context for this Dockerfile is model_wrappers/molbert/ itself (see
+# scripts/modal_finetune_molbert.py's `context_dir=`) -- src/ and
+# config/dataset/ are added afterward via ordinary `add_local_dir` on the
+# resulting Image, same as every other scripts/modal_finetune_*.py.
+
+FROM python:3.7-bullseye AS py37
+
+FROM python:3.11-bullseye
+
+COPY --from=py37 /usr/local /opt/py37
+
+# numpy pinned to match the version already validated against this exact
+# torch/pytorch-lightning/transformers combo in the local pyenv venv (see
+# docs/openadmet_migration_status.md's "Local run recipe"); torch==1.4.0
+# fails to import against numpy>=1.22 (`numpy.core.multiarray failed to
+# import`, an ABI mismatch).
+RUN /opt/py37/bin/python3.7 -m venv /opt/molbert_venv \
+    && /opt/molbert_venv/bin/pip install --upgrade pip \
+    && /opt/molbert_venv/bin/pip install numpy==1.21.6 pandas rdkit joblib tqdm pyyaml scipy \
+    && /opt/molbert_venv/bin/pip install torch==1.4.0
+
+COPY molbert_repo /opt/molbert_repo
+RUN /opt/molbert_venv/bin/pip install -e /opt/molbert_repo
+
+# Already downloaded locally (figshare, ~967MB) -- baked in here rather than
+# re-running init.sh's wget/unzip at container start.
+COPY weights /opt/molbert_weights

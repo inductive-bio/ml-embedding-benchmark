@@ -121,26 +121,16 @@ def _repo_mount(image: modal.Image) -> modal.Image:
 
 
 def _install_base_requirements(image: modal.Image) -> modal.Image:
-    """Mirrors embed_wrapper.sh's `pip install -r ../../base_requirements.txt`,
-    run before every wrapper's own init.sh. embed.py and src/common/types.py
-    unconditionally need hydra/joblib/pandas/numpy/torch regardless of which
-    wrapper is running (base_requirements.txt itself only lists
-    hydra-core/hydra-joblib-launcher/torch/joblib/tqdm uncommented -- the
-    numpy<2 pin below matches that same file's *commented-out* intended pin;
-    left uncommented there it's presumably been satisfied by luck/coincidence
-    in whatever pre-existing local venvs already had an old-enough numpy.
-    numpy 2.x is ABI-incompatible with pandas wheels built against numpy 1.x,
-    which is exactly what broke unimol's `pandas<2` pin when this ran without
-    the cap. rdkit is added here too -- several wrapper.py files
-    (coati, huggingmolecules) import it directly without declaring it as
-    their own dependency anywhere, again presumably relying on it already
-    being present in whatever environment originally set these venvs up.
-    setuptools<81 avoids `ModuleNotFoundError: No module named 'pkg_resources'`
-    -- recent setuptools no longer vendors it by default, and clamp_repo's
-    (and pytdc's, elsewhere in this repo) setup.py still does `import
-    pkg_resources` directly, a legacy pattern several old packages here rely
-    on. git is needed at build time for the handful of `pip install
-    git+https://...` dependencies (clamp, coati, huggingmolecules, mol2vec) --
+    """Mirrors embed_wrapper.sh's `pip install -r ../../base_requirements.txt`
+    step, run before every wrapper's own init.sh. numpy<2 avoids the
+    pandas-wheel ABI break that broke unimol's `pandas<2` pin (numpy 2.x is
+    ABI-incompatible with pandas wheels built against numpy 1.x). rdkit is
+    added here because coati/huggingmolecules import it directly without
+    declaring it as a dependency. setuptools<81 avoids `ModuleNotFoundError:
+    No module named 'pkg_resources'` (recent setuptools no longer vendors it,
+    but clamp_repo's and pytdc's setup.py still `import pkg_resources`
+    directly). git is needed at build time for the `pip install
+    git+https://...` deps (clamp, coati, huggingmolecules, mol2vec) --
     debian_slim doesn't include it by default."""
     image = image.apt_install("git")
     return image.pip_install(
@@ -166,23 +156,20 @@ def _wrapper_base_and_init(
         PROJECT_ROOT / "model_wrappers" / wrapper,
         remote_path=wrapper_dir,
         copy=True,  # bake into a layer so run_commands below is allowed
-        # every wrapper now has its own local venv/ (and huggingface has
-        # venv_molformer/ too) from local pyenv runs -- multi-GB, irrelevant
-        # in the container (which gets its own via pip_install), and slow or
-        # fatal to upload wholesale. Same exclusion as modal_embed_unimol.py/
+        # Local venv/ dirs (and huggingface's venv_molformer/) are multi-GB,
+        # irrelevant in the container (which gets its own via pip_install),
+        # and slow/fatal to upload -- same exclusion as modal_embed_unimol.py/
         # modal_embed_selformer.py, generalized to any venv-like dir name.
         ignore=["venv", "venv/**", "venv_*", "venv_*/**"],
     )
-    # `-e` (errexit) is passed to bash *invoking* init.sh, not added inside
+    # `-e` (errexit) is passed to bash invoking init.sh, not added inside
     # init.sh itself -- none of these scripts declare `set -e`, so a failing
-    # pip install partway through would otherwise be silently swallowed
-    # (bash just continues to the next line, and the script's own exit code
-    # is whichever command happens to run last -- often an unrelated `wget`/
-    # `unzip` that succeeds independently). That silently baked broken images
-    # for several wrappers before this was added.
+    # pip install would otherwise be silently swallowed (script continues,
+    # exit code reflects whatever command ran last). This silently baked
+    # broken images for several wrappers before being added.
     image = image.run_commands(f"cd {wrapper_dir} && INSTALL_DEP=true bash -e init.sh")
     if post_init_pip:
-        # some wrappers' own init.sh installs pull a dependency past a pin
+        # Some wrappers' init.sh pulls a dependency past a pin
         # _install_base_requirements already asserted (e.g. unimol's `pip
         # install unimol_tools --upgrade` pulls numpy back past <2.0) --
         # re-assert after the fact, same as the local run recipe does.
@@ -191,16 +178,14 @@ def _wrapper_base_and_init(
 
 
 
-# Modal's own client library refuses to import under Python <3.10 (confirmed
-# live: "RuntimeError: This version of Modal requires at least Python 3.10",
-# raised inside the container itself -- not just an image-builder setting, so
-# an arbitrary from_registry base doesn't help either). Every wrapper below
-# whose local `.python-version` is <3.10 (fingerprints/clamp/coati/
-# huggingmolecules=3.9, gem=3.8) is bumped to 3.11 for the *Modal* image only
-# -- their local pyenv venvs are untouched. None of these have an init.sh step
-# tied to a specific Python ABI (no hardcoded cp3x wheel names), so this is
-# expected to just work, but hasn't been validated live for anything except
-# fingerprints yet -- watch the first run of each closely.
+# Modal's client library refuses to import under Python <3.10
+# (`RuntimeError: This version of Modal requires at least Python 3.10`,
+# raised inside the container itself, so an arbitrary from_registry base
+# doesn't help). Wrappers whose local `.python-version` is <3.10
+# (fingerprints/clamp/coati/huggingmolecules=3.9, gem=3.8) are bumped to 3.11
+# for the Modal image only; local pyenv venvs are untouched. None pin a
+# Python-ABI-specific wheel in init.sh, so this should work, but only
+# fingerprints has been validated live -- watch the first run of each closely.
 MODAL_PYTHON_VERSION = {
     "fingerprints": "3.11",
     "mol2vec": "3.11",
@@ -212,32 +197,28 @@ MODAL_PYTHON_VERSION = {
     "huggingface": "3.11",  # no local pin at all; this is the chosen default
 }
 
-# graphfp/graphmvp are still pinned to Python 3.7 locally and their init.sh
+# graphfp/graphmvp are pinned to Python 3.7 locally and their init.sh
 # hardcodes cp37m-tagged wheel URLs (torch_scatter/torch_sparse); mol-r pins
 # torch==1.8.1/dgl==0.6.1 with the same problem. molbert_repo/setup.py pins
-# torch==1.4.0 and transformers==3.5.1 directly -- confirmed live (after the
-# `bash -e` fix below started surfacing real pip failures instead of silently
-# swallowing them): none of these four have a wheel for Python >=3.10, and
-# Modal can't run a <3.10 container at all. These are NOT YET FIXED and are
-# deliberately excluded from DEFAULT_WRAPPERS below -- building their image
-# will fail until someone works out a real fix (e.g. a dual-interpreter
-# image: a modern Python for Modal's own runtime, with the pinned legacy
-# Python installed alongside via pyenv and invoked via subprocess for the
-# actual embed.py call, mirroring what embed_wrapper.sh already does locally
-# -- or, for molbert specifically, relaxing its vendored pins and verifying
-# the model still produces the same embeddings under a newer torch/transformers).
+# torch==1.4.0 and transformers==3.5.1 directly (confirmed live once the
+# `bash -e` fix below started surfacing real pip failures instead of
+# swallowing them). None of these four have a wheel for Python >=3.10, which
+# Modal requires, so they're deliberately excluded from DEFAULT_WRAPPERS
+# until fixed -- e.g. a dual-interpreter image (modern Python for Modal's
+# runtime, pinned legacy Python via pyenv invoked by subprocess, mirroring
+# embed_wrapper.sh) or, for molbert specifically, relaxing its pins and
+# verifying embeddings are unchanged under a newer torch/transformers.
 _UNFIXED_LEGACY_PYTHON_WRAPPERS = {"graphfp", "graphmvp", "mol-r", "molbert"}
 
 
 # Per-wrapper build overrides beyond the shared _wrapper_base_and_init path.
 # unimol needs both, confirmed live in scripts/modal_embed_unimol.py:
 # - apt packages: unimol_tools imports rdkit.Chem.PandasTools -> ... ->
-#   rdkit.Chem.Draw at import time (side effect only, no rendering happens),
-#   which needs X11 libs debian_slim doesn't ship (`ImportError:
-#   libXrender.so.1: cannot open shared object file`).
+#   rdkit.Chem.Draw at import time (side effect only), which needs X11 libs
+#   debian_slim doesn't ship (`ImportError: libXrender.so.1: ...`).
 # - post_init_pip: unimol_tools' own `pip install --upgrade` in init.sh pulls
-#   numpy back past the <2.0 pin _install_base_requirements asserted, same
-#   ABI-incompatibility crash documented there.
+#   numpy back past the <2.0 pin, same ABI break documented in
+#   _install_base_requirements.
 _APT_PACKAGES_FOR = {
     "unimol": ["libxrender1", "libxext6", "libsm6"],
 }

@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - _self_
+
+hydra:
+  sweeper:
+    params:
+      +model_name: rdkit2d,mordred2d,rdkit3d_etkdg,rdkit3d_mmff94s,mordred3d_etkdg,mordred3d_mmff94s,mordred2d_rdkit3d_etkdg,mordred2d_rdkit3d_mmff94s

@@ -1,0 +1,8 @@
+name: reg_openadmet_expansionrx_KSOL
+metric: spearmancorr  # provisional -- regression scoring/metric choice deferred, see docs/data_sources/
+task: regression
+
+source:
+  name: LOCAL_CSV
+  path: data/processed/expansionrx/KSOL.csv
+  target_column: KSOL
