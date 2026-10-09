@@ -7,7 +7,6 @@ import sys
 from hydra.utils import get_original_cwd
 from os.path import join
 from ..common.types import EmbeddingConfig, Dataset, EmbeddedDataset, Embedder
-# from ..common.db import EmbeddingMeta
 from time import time
 
 
@@ -18,13 +17,6 @@ def is_already_embedded(config: EmbeddingConfig, dataset_name: str, model: Embed
     if sys.version_info < (3, 9):
         return os.path.exists(embedding_file.replace(".joblib", ".json"))
     return os.path.exists(embedding_file)
-
-
-def clock(config: EmbeddingConfig, dataset: Dataset, model: Embedder) -> None:
-    start = time()
-    model.embed(dataset.data)
-    runtime = time() - start
-    return runtime
 
 
 def embed(config: EmbeddingConfig, dataset: Dataset, model: Embedder, cache: bool = True) -> None:
@@ -69,13 +61,6 @@ def embed(config: EmbeddingConfig, dataset: Dataset, model: Embedder, cache: boo
     else:
         joblib.dump(embedded_dataset, embedding_file)
 
-    # EmbeddingMeta.create(
-    #     dataset=dataset.name,
-    #     embedder=model_name,
-    #     embedding_loc=embedding_file,
-    #     embedding_time=runtime,    
-    # )
-    
     log.info(f"{log_header} saved results")
     
     del embeddings, embedded_dataset, model

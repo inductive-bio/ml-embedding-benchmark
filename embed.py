@@ -40,7 +40,6 @@ def main(cfg):
         return
     
     dataset_path = os.path.join(get_original_cwd(), embed_config.prepared_directory, f"{dataset_name}.joblib")
-    # if python < 3.9 use legacy loader
     if sys.version_info < (3, 9):
         print("Using legacy loader")
         dataset = Dataset.deserialize_legacy(dataset_path.replace(".joblib", ".json"))
@@ -48,7 +47,6 @@ def main(cfg):
         print("Using joblib loader")
         dataset = joblib.load(dataset_path)
         
-    # illegal_smiles = cfg.model.illegal_smiles if 'model' in cfg and "illegal_smiles" in cfg.model else None
     illegal_smiles_path = cfg.illegal_smiles if 'illegal_smiles' in cfg else None
     if illegal_smiles_path is not None:
         with open(join(get_original_cwd(), illegal_smiles_path), 'r') as f:
@@ -56,7 +54,6 @@ def main(cfg):
         log.info(f"Filtering out illegal SMILES: {illegal_smiles}")
         dataset.filter_out_problematic_molecules(illegal_smiles)
     
-    # with DbContex(cfg.embedding):
     embed(embed_config, dataset, model, cache=cfg.cache)
     sleep(10)
 

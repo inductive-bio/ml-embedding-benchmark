@@ -1,0 +1,408 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# MIT License
+
+# Copyright (c) 2021 Tencent AI Lab.  All rights reserved.
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""
+The predict function using the finetuned model to make the prediction. .
+"""
+import copy
+from argparse import Namespace
+from typing import List
+
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+from rdkit import Chem
+from torch.utils.data import DataLoader
+
+from kermt.data import MolCollator
+from kermt.data import MoleculeDataset
+from kermt.data import StandardScaler
+from kermt.util.utils import get_data, get_data_from_smiles, create_logger, load_args, get_task_names, tqdm, \
+    load_checkpoint_for_prediction, load_scalars
+
+
+def predict(model: nn.Module,
+            data: MoleculeDataset,
+            args: Namespace,
+            batch_size: int,
+            loss_func,
+            logger,
+            shared_dict,
+            scaler: StandardScaler = None
+            ) -> List[List[float]]:
+    """
+    Makes predictions on a dataset using an ensemble of models.
+
+    :param model: A model.
+    :param data: A MoleculeDataset.
+    :param batch_size: Batch size.
+    :param scaler: A StandardScaler object fit on the training targets.
+    :return: A list of lists of predictions. The outer list is examples
+    while the inner list is tasks.
+    """
+    # debug = logger.debug if logger is not None else print
+    model.eval()
+    # Evaluation must not apply bond dropout, but do NOT mutate the shared args:
+    # training and eval reuse one args instance and graphs are rebuilt every epoch
+    # (caching is off by default), so setting args.bond_drop_rate = 0 here would
+    # permanently disable bond dropout for all later training epochs -- and under
+    # DDP, where only rank 0 evaluates, desync augmentation across ranks. Use a
+    # shallow copy so the override is local to this call. See issue #22.
+    args_copy = copy.copy(args)
+    args_copy.bond_drop_rate = 0
+    preds = []
+
+    # num_iters, iter_step = len(data), batch_size
+    num_tasks = args_copy.num_tasks
+    loss_sum = np.zeros(num_tasks, dtype=np.float32)
+    iter_count = 0
+
+    mol_collator = MolCollator(args=args_copy, shared_dict=shared_dict)
+    # mol_dataset = MoleculeDataset(data)
+
+    num_workers = 0
+    mol_loader = DataLoader(data, batch_size=batch_size, shuffle=False, num_workers=num_workers,
+                            collate_fn=mol_collator)
+    for _, item in enumerate(mol_loader):
+        _, batch, features_batch, mask, targets = item
+        class_weights = torch.ones(targets.shape)
+        if next(model.parameters()).is_cuda:
+            targets = targets.cuda()
+            mask = mask.cuda()
+            class_weights = class_weights.cuda()
+        with torch.no_grad():
+            batch_preds = model(batch, features_batch)
+            iter_count += 1
+            if args_copy.fingerprint:
+                preds.extend(batch_preds.data.cpu().numpy())
+                continue
+
+            if loss_func is not None:
+                if args_copy.dataset_type == 'classification':
+                    # In eval the model already applies sigmoid to classification
+                    # outputs, so batch_preds are probabilities. loss_func is
+                    # BCEWithLogitsLoss, which would sigmoid a second time. Score
+                    # the eval loss with plain BCE on the probabilities (clamped
+                    # for numerical safety).
+                    probs = batch_preds.clamp(min=1e-7, max=1.0 - 1e-7)
+                    loss = torch.nn.functional.binary_cross_entropy(
+                        probs, targets, reduction='none') * class_weights * mask
+                else:
+                    loss = loss_func(batch_preds, targets) * class_weights * mask
+                loss_batch = loss.sum(axis=0) / torch.clamp(mask.sum(axis=0), min=1.0)
+                loss_batch = loss_batch.cpu().numpy()
+                loss_sum += loss_batch
+        # Collect vectors
+        batch_preds = batch_preds.data.cpu().numpy().tolist()
+        if scaler is not None:
+            batch_preds = scaler.inverse_transform(batch_preds)
+        preds.extend(batch_preds)
+
+    loss_avg = loss_sum / iter_count
+    return preds, loss_avg
+
+
+def make_predictions(args: Namespace, newest_train_args=None, smiles: List[str] = None):
+    """
+    Makes predictions. If smiles is provided, makes predictions on smiles.
+    Otherwise makes predictions on args.test_data.
+
+    :param args: Arguments.
+    :param smiles: Smiles to make predictions on.
+    :return: A list of lists of target predictions.
+    """
+    if args.gpu is not None:
+        torch.cuda.set_device(args.gpu)
+
+    print('Loading training args')
+
+    path = args.checkpoint_paths[0]
+    scaler, features_scaler = load_scalars(path)
+    train_args = load_args(path)
+
+    # Update args with training arguments saved in checkpoint
+    for key, value in vars(train_args).items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
+
+    # update args with newest training args
+    if newest_train_args is not None:
+        for key, value in vars(newest_train_args).items():
+            if not hasattr(args, key):
+                setattr(args, key, value)
+
+
+    # deal with multiprocess problem
+    args.debug = True
+
+    logger = create_logger('predict', quiet=False)
+    print('Loading data')
+    # Use task_names from checkpoint for blinded test data (no target columns)
+    args.task_names = train_args.task_names if hasattr(train_args, 'task_names') else get_task_names(args.data_path)
+    if smiles is not None:
+        test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False)
+    else:
+        test_data = get_data(path=args.data_path, args=args,
+                             use_compound_names=args.use_compound_names, skip_invalid_smiles=False)
+
+
+    args.num_tasks = test_data.num_tasks()
+    args.features_size = test_data.features_size()
+
+    # features_size is not a model arg, so it is recomputed from the prediction data
+    # rather than inherited from the checkpoint. If it disagrees with what the model was
+    # finetuned on, the FFN input layer has the wrong width. Catch it here: the loader
+    # would otherwise report a bare tensor-shape mismatch that does not say which input
+    # is missing, and before the strict loader was restored it silently dropped that
+    # layer and predicted from its random initialization.
+    ckpt_features_size = getattr(train_args, 'features_size', None)
+    if ckpt_features_size is not None and args.features_size != ckpt_features_size:
+        ckpt_generator = getattr(train_args, 'features_generator', None)
+        hint = (f'pass the same features with --features_path, or regenerate them with '
+                f'--features_generator {" ".join(ckpt_generator)}'
+                if ckpt_generator else
+                'the checkpoint was finetuned without additional features, so do not pass '
+                '--features_path or --features_generator')
+        raise ValueError(
+            f'Feature size mismatch: the checkpoint was finetuned with features_size='
+            f'{ckpt_features_size} but the prediction data has features_size='
+            f'{args.features_size}. To predict with this checkpoint, {hint}.')
+
+    print('Validating SMILES')
+    # Drop empty / unparseable / zero-heavy-atom SMILES before featurization —
+    # MolGraph raises on invalid input, so leaving them in aborts the whole run.
+    # valid_indices drives the None-insertion in write_prediction, so the written
+    # predictions realign to the original input rows. (Matches the criterion in
+    # utils.filter_invalid_smiles.)
+    valid_indices = []
+    for i in range(len(test_data)):
+        smi = test_data[i].smiles
+        mol = Chem.MolFromSmiles(smi) if smi else None
+        if mol is not None and mol.GetNumHeavyAtoms() > 0:
+            valid_indices.append(i)
+    full_data = test_data
+    test_data_list = []
+    for i in valid_indices:
+        test_data_list.append(test_data[i])
+    test_data = MoleculeDataset(test_data_list)
+
+    # Edge case if empty list of smiles is provided
+    if len(test_data) == 0:
+        return [None] * len(full_data)
+
+    print(f'Test size = {len(test_data):,}')
+
+    # Normalize features
+    if hasattr(train_args, 'features_scaling'):
+        if train_args.features_scaling:
+            test_data.normalize_features(features_scaler)
+
+    # Predict with each model individually and sum predictions
+    # Use train_args.num_tasks since args.num_tasks may be 0 for blinded test data
+    num_tasks = train_args.num_tasks if hasattr(train_args, 'num_tasks') else args.num_tasks
+    sum_preds = np.zeros((len(test_data), num_tasks))
+    print(f'Predicting...')
+    shared_dict = {}
+    # loss_func = torch.nn.BCEWithLogitsLoss()
+    count = 0
+    for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
+        # Load model
+        model = load_checkpoint_for_prediction(checkpoint_path, cuda=args.cuda, current_args=args, logger=logger)
+        model_preds, _ = predict(
+            model=model,
+            data=test_data,
+            batch_size=args.batch_size,
+            scaler=scaler,
+            shared_dict=shared_dict,
+            args=args,
+            logger=logger,
+            loss_func=None
+        )
+
+        if args.fingerprint:
+            return model_preds
+
+        sum_preds += np.array(model_preds, dtype=float)
+        count += 1
+
+    # Ensemble predictions
+    avg_preds = sum_preds / len(args.checkpoint_paths)
+
+    # Save predictions
+    assert len(test_data) == len(avg_preds)
+
+    # Put Nones for invalid smiles
+    args.valid_indices = valid_indices
+    avg_preds = np.array(avg_preds)
+    test_smiles = full_data.smiles()
+    return avg_preds, test_smiles
+
+
+def write_prediction(avg_preds, test_smiles, args):
+    """
+    write prediction to disk
+    :param avg_preds: prediction value
+    :param test_smiles: input smiles
+    :param args: Arguments
+    """
+    if args.dataset_type == 'multiclass':
+        avg_preds = np.argmax(avg_preds, -1)
+    full_preds = [[None]] * len(test_smiles)
+    for i, si in enumerate(args.valid_indices):
+        full_preds[si] = avg_preds[i]
+    result = pd.DataFrame(data=full_preds, index=test_smiles, columns=args.task_names)
+    result.to_csv(args.output_path)
+    print(f'Saving predictions to {args.output_path}')
+
+
+
+def evaluate_predictions(preds: List[List[float]],
+                         targets: List[List[float]],
+                         num_tasks: int,
+                         metric_func,
+                         dataset_type: str,
+                         logger = None) -> List[float]:
+    """
+    Evaluates predictions using a metric function and filtering out invalid targets.
+
+    :param preds: A list of lists of shape (data_size, num_tasks) with model predictions.
+    :param targets: A list of lists of shape (data_size, num_tasks) with targets.
+    :param num_tasks: Number of tasks.
+    :param metric_func: Metric function which takes in a list of targets and a list of predictions.
+    :param dataset_type: Dataset type.
+    :param logger: Logger.
+    :return: A list with the score for each task based on `metric_func`.
+    """
+    if dataset_type == 'multiclass':
+        results = metric_func(np.argmax(preds, -1), [i[0] for i in targets])
+        return [results]
+
+    # info = logger.info if logger is not None else print
+
+    if len(preds) == 0:
+        return [float('nan')] * num_tasks
+
+    # Filter out empty targets
+    # valid_preds and valid_targets have shape (num_tasks, data_size)
+    valid_preds = [[] for _ in range(num_tasks)]
+    valid_targets = [[] for _ in range(num_tasks)]
+    for i in range(num_tasks):
+        for j in range(len(preds)):
+            if targets[j][i] is not None:  # Skip those without targets
+                valid_preds[i].append(preds[j][i])
+                valid_targets[i].append(targets[j][i])
+
+    # Compute metric
+    results = []
+    for i in range(num_tasks):
+        # # Skip if all targets or preds are identical, otherwise we'll crash during classification
+        if dataset_type == 'classification':
+            nan = False
+            if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
+                nan = True
+                # info('Warning: Found a task with targets all 0s or all 1s')
+            if all(pred == 0 for pred in valid_preds[i]) or all(pred == 1 for pred in valid_preds[i]):
+                nan = True
+                # info('Warning: Found a task with predictions all 0s or all 1s')
+
+            if nan:
+                results.append(float('nan'))
+                continue
+
+        if len(valid_targets[i]) == 0:
+            # Append nan (like the all-0/1 branch above) instead of skipping, so
+            # results stays aligned per-task; a bare `continue` would shift every
+            # later task's metric down one index.
+            results.append(float('nan'))
+            continue
+
+        results.append(metric_func(valid_targets[i], valid_preds[i]))
+
+    return results
+
+
+def evaluate(model: nn.Module,
+             data: MoleculeDataset,
+             num_tasks: int,
+             metric_func,
+             loss_func,
+             batch_size: int,
+             dataset_type: str,
+             args: Namespace,
+             shared_dict,
+             scaler: StandardScaler = None,
+             logger = None) -> List[float]:
+    """
+    Evaluates an ensemble of models on a dataset.
+
+    :param model: A model.
+    :param data: A MoleculeDataset.
+    :param num_tasks: Number of tasks.
+    :param metric_func: Metric function which takes in a list of targets and a list of predictions.
+    :param batch_size: Batch size.
+    :param dataset_type: Dataset type.
+    :param scaler: A StandardScaler object fit on the training targets.
+    :param logger: Logger.
+    :return: A list with the score for each task based on `metric_func`.
+    """
+    preds, loss_avg = predict(
+        model=model,
+        data=data,
+        loss_func=loss_func,
+        batch_size=batch_size,
+        scaler=scaler,
+        shared_dict=shared_dict,
+        logger=logger,
+        args=args
+    )
+
+    targets = data.targets()
+    if scaler is not None:
+        targets = scaler.inverse_transform(targets)
+
+
+
+    results = evaluate_predictions(
+        preds=preds,
+        targets=targets,
+        num_tasks=num_tasks,
+        metric_func=metric_func,
+        dataset_type=dataset_type,
+        logger=logger
+    )
+
+    return results, loss_avg

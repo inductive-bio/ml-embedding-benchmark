@@ -53,7 +53,7 @@ DATASETS = [
     "reg_openadmet_expansionrx_Log_Mouse_BPB",
     "reg_openadmet_expansionrx_Log_Mouse_MPB",
     "reg_openadmet_expansionrx_Log_Mouse_PPB",
-    "reg_openadmet_expansionrx_LogS",
+    "reg_openadmet_expansionrx_KSOL",
     "reg_openadmet_polaris_admet_HLM",
     "reg_openadmet_polaris_admet_KSOL",
     "reg_openadmet_polaris_admet_LogD",

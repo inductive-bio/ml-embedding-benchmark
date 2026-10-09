@@ -14,7 +14,6 @@ class CoatiEmbedder(SmilesEmbedder):
         self._encoder, self._tokenizer = load_e3gnn_smiles_clip_e2e(
             freeze=True,
             device=self._device,
-            # model parameters to load.
             doc_url=model_path,
         )
         self._tokenizer.on_unknown = "ignore"
@@ -32,7 +31,7 @@ class CoatiEmbedder(SmilesEmbedder):
     
     @property
     def device_used(self):
-        return self._device.type.split(':')[0]  # Returns 'cuda' or 'cpu' based on the device used
+        return self._device.type.split(':')[0]
 
 
 def get_embedder(name, **kwargs) -> SmilesEmbedder:

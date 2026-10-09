@@ -10,8 +10,4 @@ hydra:
   sweeper:
     params:
       +dataset: glob(*,exclude=[large*])
-      # +dataset: glob(ogbg-molbbbp)
-      # +dataset: glob(*)
-      # +dataset: glob(clf_DILI)
-      # +dataset: glob(clf_ogbg-molhiv)
 

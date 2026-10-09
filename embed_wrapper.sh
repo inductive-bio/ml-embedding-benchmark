@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# parse
 DELETE=false
 CACHE=true
 CMD=embed.py
@@ -21,10 +20,6 @@ while [[ $# -gt 0 ]]; do
             CACHE=false
             shift
             ;;
-        --clock)
-            CMD=clock.py
-            shift
-            ;;
         --embed)
             CMD=embed.py
             shift
@@ -43,7 +38,6 @@ done
 run() {
     cd $WRAPPER_PATH
 
-    # install environment
     if [ -d "venv" ] && [ -z "$REINSTALL" ]; then
         source venv/bin/activate
         export INSTALL_DEP=false

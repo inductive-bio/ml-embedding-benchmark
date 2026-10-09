@@ -10,7 +10,6 @@ def batch(data, n=128):
         batch = data[ndx:min(ndx + n, data_len)]
         if type(batch) is not list:
             batch = batch.tolist()
-        # log.debug(f"Type: {type(batch)} Batch: {batch}")
         yield batch
 
 

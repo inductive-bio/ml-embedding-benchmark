@@ -1,6 +1,0 @@
-name: ogbg-molbbbp
-metric: roc_auc
-task: classification
-
-source:
-  name: OGB

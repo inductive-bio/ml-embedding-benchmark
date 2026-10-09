@@ -1,7 +1,0 @@
-name: hERG_Karim
-metric: roc_auc
-task: classification
-
-source:
-  name: TDC
-  group: TOX

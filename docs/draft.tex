@@ -1,0 +1,1253 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+    \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2026
+
+% The authors should use one of these tracks.
+% Before accepting by the NeurIPS conference, select one of the options below.
+% 0. "default" for submission
+% \usepackage{neurips_2026}
+% the "default" option is equal to the "main" option, which is used for the Main Track with double-blind reviewing.
+% 1. "main" option is used for the Main Track
+%  \usepackage[main]{neurips_2026}
+% 2. "position" option is used for the Position Paper Track
+%  \usepackage[position]{neurips_2026}
+% 3. "eandd" option is used for the Evaluations & Datasets Track
+ % \usepackage[eandd]{neurips_2026}
+% 4. "creativeai" option is used for the Creative AI Track
+%  \usepackage[creativeai]{neurips_2026}
+% 5. "sglblindworkshop" option is used for the Workshop with single-blind reviewing
+ % \usepackage[sglblindworkshop]{neurips_2026}
+% 6. "dblblindworkshop" option is used for the Workshop with double-blind reviewing
+\usepackage[dblblindworkshop]{neurips_2026}
+\workshoptitle{AI for Drug Discovery: Bridging the Translation Gap}
+
+\makeatletter
+\renewcommand{\@noticestring}{%
+  Submitted to the AI for Drug Discovery workshop (NeurIPS 2026).%
+}
+\makeatother
+% 7. "education" option is used for the Education Track
+%  \usepackage[education]{neurips_2026}
+
+
+% After being accepted, the authors should add "final" behind the track to compile a camera-ready version.
+% 1. Main Track
+ % \usepackage[main, final]{neurips_2026}
+% 2. Position Paper Track
+%  \usepackage[position, final]{neurips_2026}
+% 3. Evaluations & Datasets Track
+ % \usepackage[eandd, final]{neurips_2026}
+% 4. Creative AI Track
+%  \usepackage[creativeai, final]{neurips_2026}
+% 5. Workshop with single-blind reviewing
+%  \usepackage[sglblindworkshop, final]{neurips_2026}
+% 6. Workshop with double-blind reviewing
+%  \usepackage[dblblindworkshop, final]{neurips_2026}
+% Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote.
+% For workshops (5., 6.), the authors should add the name of the workshop, "\workshoptitle" command is used to set the workshop title.
+% \workshoptitle{WORKSHOP TITLE}
+% 7. Education Track
+% \usepackage[education, final]{neurips_2026}
+
+% "preprint" option is used for arXiv or other preprint submissions
+ % \usepackage[preprint]{neurips_2026}
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2026}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{tabularx}
+\usepackage{threeparttable}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{amsmath}        % display math environments
+\usepackage{amssymb}        % \succ, \geq etc.
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{amsthm}         % proposition environment
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{hyperref}       % hyperlinks
+
+\newtheorem{theorem}{Theorem}[section]
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+
+% Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote. 
+\title{A Latent Ability Model for Benchmarking Molecular Representations}
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{%
+  David S.~Hippocampus\thanks{Use footnote for providing further information
+    about author (webpage, alternative address)---\emph{not} for acknowledging
+    funding agencies.} \\
+  Department of Computer Science\\
+  Cranberry-Lemon University\\
+  Pittsburgh, PA 15213 \\
+  \texttt{hippo@cs.cranberry-lemon.edu} \\
+  % examples of more authors
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \AND
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+}
+
+
+\begin{document}
+
+
+\maketitle
+
+
+\begin{abstract}
+  The growing number of chemical foundation models calls for a standardized benchmarking method both for practitioners choosing representations and researchers identifying gaps. Previous work that ranked latent abilities of various chemical embeddings to predict ADMET properties suffered from significant shortcomings, including the use of biased datasets incongruent with real world usage and overstating statistically significant differences in model performance. We derive from first principles a variance inflation factor of $\frac{M+1}{3}$ for the Bayesian Bradley-Terry model evaluating $M$ models on $E$ endpoints at the exchangeable null and use numerical simulation to show variance inflation is still present in the non-exchangeable case. We propose a new method to directly model the margin of error as a function of latent ability and use it to evaluate models retrospectively on the datasets from the OpenADMET Polaris, ExpansionRx, and PXR competitions. We compare 34 embeddings and 14 end-to-end fine-tuned models across 17 ADMET endpoints and conclude that although no representation outperforms an ECFP baseline on a new endpoint at $p=0.05$, many neural representations outperform an ECFP baseline on most endpoints.
+\end{abstract}
+
+\section{Introduction}
+Predicting absorption, distribution, metabolism, excretion, and toxicity (ADMET) properties is a crucial step in the drug discovery process. \footnote{Code and analysis scripts are available at
+\url{https://anonymous.4open.science/r/ml-latent-ability-benchmark-74D4}.} As more ADMET data becomes available through consortiums such as OpenADMET \citep{fraser2026}, the adaptation of molecular deep learning methods to predict these properties \textit{in silico} has become popular. These datasets are measured under a single protocol and released with held-out test sets, removing assay heterogeneity across literature sources \citep{landrum2024} and prior model exposure to evaluation data, which leads to a data regime where statistical modeling can make credible statements about which representations transfer to an unseen endpoint.
+
+
+% Foundation models have become popular in many areas of deep learning, such as DINO \citep{caron2021} for computer vision, and SimCSE \citep{gao2021} for language modeling. 
+
+Molecular foundation models \citep{Lin2023-jz, wood2026umafamilyuniversalmodels} have become popular as larger datasets become available \citep{zinc20, pubchem, chembl}. However, in the less data-abundant regime of ADMET modeling, there is a gap in standardized benchmarking. Previous attempts to rank model abilities \citep{praski2025} relied on the Bayesian Bradley-Terry model, which provides a general method to compare models on disparate datasets. In the case of ADMET modeling where we perform continuous regression on data that is pre-transformed, discarding the margin of error for pairwise wins between models is provably problematic.
+
+We prove under the exchangeable null, where all models have equal ability, the BBT model evaluating $M$ models on $E$ endpoints provides an estimator with variance inflated by a factor of $\frac{M+1}{3}$. To avoid this, we propose a method to directly model the margin of error as a function of latent ability. We adapt from existing two-parameter item response theory (IRT) \citep{lord1968, birnbaum1968} and use the fact that all models are scored on the same compounds on each endpoint to our advantage.
+
+We score 34 frozen embeddings and 14 end-to-end fine-tuned models across 17 ADMET endpoints from the OpenADMET Polaris \citep{asap2025, polaris}, ExpansionRx \citep{expansionrx}, and PXR \citep{pxr} competitions. We rank latent ability, and probability of each model to beat extended connectivity fingerprints (ECFP) on both an unseen endpoint and existing endpoints. We provide the theoretical framing to declare regions of practical equivalence based on variance within each assay, moving away from an opaque notion of posterior width.
+
+\section{Related work}
+\paragraph{Benchmarking molecular representations.} Datasets such as MoleculeNet \citep{wu2018}, and the Therapeutic Data Commons (TDC) \citep{huang2021} have attempted to compare ADMET prediction abilities of molecular models. Previous studies have found that pretrained neural representations do not outperform classical fingerprints and descriptors \citep{jiang2021, vantilborg2022, praski2025}. Disagreement on whether these neural representations are superior to deterministic fingerprints or descriptors stems partly from the protocol used to evaluate these models, which has led to calls for stricter comparison standards in drug discovery \citep{wognum2024, ash2025}. We propose a new, margin-aware latent ability method for benchmarking models on regression datasets.
+
+\paragraph{Comparison methods.} \citet{demsar2006} argued for the frequentist method of comparing multiple algorithms on multiple datasets, and \citet{benavoli2017} argues for Bayesian methods that provide regions of practical equivalence for the posterior distribution. \citet{wainer2023} combined both of these ideas with Bradley-Terry preference modeling \citep{bradley1952, zermelo1929} to develop the Bayesian Bradley-Terry (BBT) model.
+
+\paragraph{Latent ability modeling.} IRT \citep{lord1968, birnbaum1968} was developed to quantify the relationship between peoples' latent traits and observed outcomes. Various models from IRT have been applied to compare machine learning methods beyond aggregate test error \citep{lalor2016, rodriguez2021, vania2021}. We propose a continuous-response analog (see App.~\ref{app:margins}).
+
+\section{Modeling latent abilities}
+\subsection{Bayesian Bradley-Terry model}
+
+The Bradley-Terry model \citep{bradley1952, zermelo1929} assigns each item $i$ a
+latent strength $w_i > 0$ and models a comparison between items $i$ and $j$ as
+\begin{equation}
+  P(i \succ j) \;=\; \frac{w_i}{w_i + w_j} \;=\; \sigma(\beta_i - \beta_j),
+  \qquad \beta_i \equiv \log w_i ,
+  \label{eq:bt}
+\end{equation}
+where $\sigma$ is the logistic function.
+
+The Bayesian-Bradley-Terry model \citep{wainer2023} was developed to rank machine learning models on various datasets. Once all models are scored on each dataset, pairwise wins are counted, writing $W_{ij}$ as the number of times model $i$ beats model $j$. BBT uses the pseudo-likelihood: 
+\begin{equation}
+    L(w) = \prod_{i \neq j} \biggl( \frac{w_i}{w_i + w_j}\biggr)^{W_{ij}}
+\end{equation}
+and obtains a point estimate of $w^\star = \argmax_w L(w)$.
+
+BBT then runs MCMC to estimate parameters, sampling from:
+\begin{equation}
+  W_{ij} \sim \mathrm{Binomial}\!\left(N_{ij},\, \sigma(\beta_i - \beta_j)\right),
+  \qquad
+  \beta_i \sim \mathcal{N}(0, \sigma_\beta^2),
+  \qquad
+  \sigma_\beta \sim \mathrm{LogNormal}(0, 0.5).
+  \label{eq:bbt}
+\end{equation}
+
+\subsection{Limitations of BBT}
+\label{sec:limitations}
+\paragraph{Margins are discarded.}
+Reducing each comparison to a binary outcome removes the error margins. For ADMET prediction, these margins are important, assay noise can be large enough that a `win' can fall within experimental uncertainty \citep{kramer2012, brown2009, landrum2024}, and statements of statistically significant differences from a margin-unaware comparison protocol do not necessarily translate to practical significance \citep{ash2025}.
+
+\paragraph{Pseudo-likelihood inflates variance.}
+Each endpoint yields $\binom{M}{2}$ pairwise outcomes, but these outcomes are a deterministic function of the ranking. It can be proven that the score function of this pseudo-likelihood remains unbiased, so the estimator is consistent. However, the curvature of the pseudo-likelihood doesn't match the sampling variance of its score. We write $H = -\mathbb{E}[\nabla^2\ell_P]$ for the curvature and $J = \Var(\nabla\ell_P)$ for the score variance. The correct asymptotic variance is $H^+JH^+$ but the pseudo-likelihood yields $H^+$, implicitly assuming $J = H$.
+\begin{theorem}[BBT Variance Inflation]
+    Let each of $E$ endpoints induce a total order over $M$ models, independently and uniformly at random. Evaluating the variance of the point estimate of the MLE for the pairwise likelihood yields:
+    \begin{equation}
+        \Var(\hat{\beta}) = \frac{M+1}{3}H^+.
+    \end{equation}
+    The variance of the MLE induced by the pairwise, pseudo-likelihood is inflated by a factor of $\frac{M+1}{3}$, independent of the number of endpoints.
+\end{theorem}
+
+A full proof is given in Appendix~\ref{app:inflation}, alongside results from numerical simulation to prove the existence of this variance inflation factor in App.~\ref{app:scope}.
+
+\subsection{Bayesian latent ability model}
+\label{sec:blam}
+
+Both limitations of the BBT model come from the reduction of margin of error to pairwise wins. To avoid this, we directly model the error.
+
+Let $\hat{y}_{ie}$ be the MAE of model $i$ on endpoint $e$. All endpoints are transformed to be approximately normal, generally via a logarithmic transform. Since each endpoint contributes one factor to the likelihood, no variance inflation factor from a pairwise, pseudo-likelihood exists for this model.
+
+We decompose the population MAE as 
+\begin{equation}
+    y_{ie} = \mu_e - a_e\theta_i + u_{ie},\qquad u_{ie}\sim\mathcal{N}(0, \omega_e^2),
+    \label{eq:decomposition}
+\end{equation}
+where
+\begin{itemize}
+    \item $\mu_e \in \mathbb{R}$ is the \textbf{difficulty} of endpoint $e$, the mean MAE across models.
+    \item $a_e \geq 0$ is the \textbf{discrimination} of endpoint $e$, how well it separates models of differing ability.
+    \item $\theta_i \in \mathbb{R}$ is the \textbf{latent ability} of model $i$. Larger $\theta_i$ corresponds to better models.
+    \item $u_{ie}$ is the \textbf{specialization} of model $i$ on endpoint $e$.
+\end{itemize}
+
+Note translations of $\theta$ are absorbed by $\mu_e$, and scalings and sign flips by $a_e$. For identifiability, we use the prior: 
+\begin{equation}
+    \theta \sim \mathcal{N}(0, P), \qquad P = I_M - \tfrac{1}{M}\mathbf{1}\mathbf{1}^\top.
+\end{equation}
+
+
+The following weakly informative priors are used, where $\bar{y}_e$ is the mean observed MAE on endpoint $e$ and $\hat{s}$ is a noise-corrected median (across models) standard deviation.
+\begin{gather}
+  \mu_e \sim \mathcal{N}(\bar{y}_e, 1), \qquad
+  a_e = \sigma_a \tilde{a}_e, \qquad
+  \omega_e = \sigma_\omega \tilde{\omega}_e, \nonumber \\
+  \tilde{a}_e, \tilde{\omega}_e \sim \text{Half-Normal}(0, 1), \qquad
+  \sigma_a, \sigma_\omega \sim \mathrm{LogNormal}\!\left(\log(\hat{s}/\sqrt{2}),\, 0.5\right).
+  \label{eq:priors}
+\end{gather}
+
+\subsubsection{Reportable quantities}
+Each posterior sample is indexed by $s$, corresponding to a sample from the MCMC simulation.
+
+\paragraph{Ranks.} We order models by the posterior mean $\bar{\theta}_i$ and compute the posterior distribution over each model's rank by ranking $\theta^{(s)}$ within each sample.
+
+\paragraph{ECFP baseline.}For each sample, we can compute $\delta_{ij}^{(s)} = \theta_i^{(s)} - \theta_j^{(s)}$ to get an estimate of $P(\delta_{ij} > 0)$. We take $j$ as ECFP for a baseline.
+
+\paragraph{Performance on a new endpoint.} To draw analogy back to the BBT model, we sample $a_{\text{new}}^{(s)} \sim \text{Half-Normal}(0, \sigma_a^{(s)})$ and
+$\omega_{\text{new}}^{(s)} \sim \text{Half-Normal}(0, \sigma_\omega^{(s)})$, then compute 
+\begin{equation}
+  P(i \succ j)^{(s)}
+  = \Phi\!\left( \frac{a_{\text{new}}^{(s)} \delta_{ij}^{(s)}}
+                      {\sqrt{2}\, \omega_{\text{new}}^{(s)}} \right),
+  \label{eq:newendpoint}
+\end{equation}
+and average over samples. For a detailed derivation, see App.~\ref{app:margins}.
+
+\paragraph{Physically grounded uncertainty} Recall that the BBT model defines a region of practical equivalence based on the width of the posterior distribution, which does not have a meaningful physical interpretation. Our model offers a physically grounded means of comparison between models per endpoint.
+
+Since $\theta$ is sampled from (almost) unit variance, the implied MAE difference on an endpoint given the latent abilities of two models on a sample is:
+\begin{equation}
+    \Delta_{ije}^{(s)} = a_e^{(s)}\delta_{ij}^{(s)}, \qquad \delta_{ij}^{(s)} = \theta_i^{(s)} - \theta_{\text{ECFP}}^{(s)}.
+\end{equation}
+
+This allows us to pick a region of practical equivalence per endpoint, where the threshold for significance $\Delta_{ije} < \delta_e$ has a physical interpretation. Thresholds for significance can now be computed per endpoint, where, for example, we could impose $\delta_e > \sigma_e$ where $\sigma_e$ is the standard deviation of the endpoint assay itself \citep{kramer2012, ash2025}.
+
+
+\section{Experiments}
+\subsection{Model selection}
+Embeddings were extracted from the models listed in Table~\ref{tab:models}.
+For simplicity, only models with an existing method for end-to-end fine-tuning
+on regression tasks were fine-tuned.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\begin{threeparttable}
+\caption{Models from which embeddings were extracted, grouped by input
+representation. \textbf{Bold} marks models additionally fine-tuned end to end;
+\emph{italics} mark models trained only end to end, with no frozen embeddings.}
+\label{tab:models}
+\begin{tabularx}{\linewidth}{@{}lL@{}}
+\toprule
+\textbf{Representation} & \textbf{Models} \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Learned representations}} \\
+Language models & CDDD \citep{cddd}, ChemBERTa \citep{chemberta},
+             ChemFM \citep{chemfm}, Chemformer \citep{chemformer},
+             ChemGPT \citep{chemgpt}, CLAMP \citep{clamp},
+             Mol2vec \citep{mol2vec}, \textbf{MolBERT} \citep{molbert},
+             MolFormer \citep{molformer}, \textbf{SELFormer} \citep{selformer},
+             \textbf{SimSon} \citep{simson} \\
+2D GNN & GraphFP \citep{graphfp}, \textbf{GROVER} \citep{grover},
+         \textbf{KERMT} \citep{kermt, kermtv2}, MiniMol \citep{minimol},
+         MolR \citep{molr}, \emph{ChemProp (2D)} \citep{chemprop, chemprop2} \\
+2D GNN, 3D distilled\tnote{a} & COATI \citep{coati},
+         \textbf{GraphMVP} \citep{graphmvp}, \textbf{CheMeleon} \citep{chemeleon},
+         SAND \citep{sand} \\
+2D GNN, 3D input & \textbf{GEM} \citep{gem}, \textbf{MAT} \citep{mat},
+                   \textbf{R-MAT} \citep{rmat},
+                   \emph{ChemProp (3D)} \citep{chemprop, chemprop2} \\
+3D GNN & \textbf{Uni-Mol v1} \citep{unimol}, \textbf{Uni-Mol v2} \citep{unimol2},
+         Monroe \citep{monroe} \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Fixed descriptors}} \\
+2D & Atom pair \citep{atompair}, ECFP \citep{ecfp},
+     Topological Torsion \citep{topologicaltorsion},
+     Mordred (2D only) \citep{mordred}, RDKit-2D \citep{rdkit} \\
+3D & Mordred (with 3D) \citep{mordred}, RDKit-3D\tnote{b} \citep{rdkit},
+     Mordred (2D) + RDKit-3D \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}[flushleft]\scriptsize
+\item[a] 3D information is distilled during pre-training but not consumed at inference.
+\item[b] 912 3D descriptors implemented in RDKit; details in App.~\ref{app:descriptors}.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\subsection{Experimental details}
+We use the OpenADMET Polaris \citep{asap2025, polaris}, ExpansionRx \citep{expansionrx}, PXR \citep{pxr} endpoints as our datasets. This provides us with 17 endpoints, ranging from 102 to 2270 compounds on the test set. We evaluate 34 frozen embeddings and 14 models fine-tuned end to end (see Table~\ref{tab:models}).
+
+For frozen embeddings, we try scaffolding with random forest, k-nearest neighbors, ridge regression, tabular in-context learning (TabICL) \citep{tabicl}, and tabular prior-data fitted network (TabPFN) \citep{tabpfn3}. Hyperparameter grid search is done via 5-fold cross validation (CV), then the best estimator is re-fit on all the training data for non-tabular methods. TabICL and TabPFN do not require hyperparameter tuning, so 5-fold CV is used to score and then fit once on training data.
+
+The best scaffold per embedding is selected via best combined train and validation CV score. Variants of models (e.g. models of varying size) are also pruned the same way for simplicity.
+
+To estimate parameters in Eq.~\ref{eq:priors}, we use NUTS \citep{hoffman2014}, an adaptive version of HMC provided by NumPyro \citep{phan2019, bingham2019}. We simultaneously run 16 chains, with 2,000 warmup steps and 4,000 sample steps. Statistics are then computed on the sample steps after the warmup phase. Across all parameters, the Gelman-Rubin statistic \citep{gelman1992, vehtari2021} is $\hat{R} \leq 1.0033$, and effective sample size is $\geq$ 6,700 of 64,000 post-warmup samples (see App.~\ref{app:diagnostics}), so we conclude the simulation was successful.
+
+\subsection{Results}
+
+We compute the posterior mean of the latent ability $\bar{\theta}_i$ and report this quantity, ranked from best to worst (top to bottom) in table ~\ref{tab:thetas}. Note classical descriptors and neural models both share top ranks.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{0.9}
+\caption{Posterior latent ability $\theta_i$ for all 34 frozen embeddings and 14 end-to-end fine-tuned models, ranked
+best to worst (posterior SD in parentheses). $^\dagger$ marks models
+fine-tuned end to end, all others are frozen embeddings. $^\ast$ marks the ECFP
+baseline.}
+\label{tab:thetas}
+\begin{tabular}[t]{@{}rlr@{}}
+\toprule
+\# & Representation & $\theta_i$ \\
+\midrule
+1  & Monroe                             & 1.35 (0.21) \\
+2  & Mordred (2D only)                  & 1.08 (0.19) \\
+3  & Mordred (3D, Boltzmann)            & 1.08 (0.19) \\
+4  & RDKit-2D                           & 0.98 (0.19) \\
+5  & Mordred 2D + RDKit 3D (Boltzmann)  & 0.97 (0.19) \\
+6  & MiniMol                            & 0.96 (0.19) \\
+7  & ChemBERTa (10M, MTR)               & 0.88 (0.19) \\
+8  & KERMT$^\dagger$                    & 0.88 (0.19) \\
+% NB: ranks 7 and 8 differ by 0.005; likewise not meaningful.
+9  & Uni-Mol (v1)$^\dagger$             & 0.83 (0.20) \\
+10 & MAT (masking, 20M)                 & 0.81 (0.18) \\
+11 & KERMT                              & 0.79 (0.18) \\
+12 & R-MAT (4M)                         & 0.76 (0.18) \\
+13 & Mol2vec                            & 0.69 (0.18) \\
+14 & MolR-TAG (1024)                    & 0.66 (0.18) \\
+15 & MolBERT                            & 0.66 (0.18) \\
+16 & GEM$^\dagger$                      & 0.65 (0.18) \\
+17 & Chemeleon (PubChem, mean)          & 0.62 (0.18) \\
+18 & RDKit-3D (mean)                    & 0.52 (0.17) \\
+19 & Uni-Mol (v2)$^\dagger$             & 0.49 (0.18) \\
+20 & CDDD                               & 0.49 (0.18) \\
+21 & Atom Pair (count)                  & 0.46 (0.17) \\
+22 & CLAMP                              & 0.45 (0.18) \\
+23 & SAND                               & 0.43 (0.18) \\
+24 & R-MAT (4M)$^\dagger$               & 0.37 (0.18) \\
+\bottomrule
+\end{tabular}
+\hfill
+\begin{tabular}[t]{@{}rlr@{}}
+\toprule
+\# & Representation & $\theta_i$ \\
+\midrule
+25 & Chemeleon (PubChem, mean)$^\dagger$ & \phantom{-}0.36 (0.18) \\
+26 & COATI                               & \phantom{-}0.27 (0.17) \\
+27 & Uni-Mol (v2)                        & \phantom{-}0.22 (0.17) \\
+28 & \textbf{ECFP (count)}$^\ast$                 & \phantom{-}0.14 (0.17) \\
+29 & Topological Torsion (count)         & \phantom{-}0.12 (0.17) \\
+30 & SELFormer$^\dagger$                 & -0.17 (0.19) \\
+31 & Chemprop (2D)$^\dagger$             & -0.28 (0.18) \\
+32 & MoLFormer-XL (10\%)                 & -0.30 (0.18) \\
+33 & ChemGPT (4.7M)                      & -0.37 (0.18) \\
+34 & GraphMVP (Contextual, sum)          & -0.39 (0.18) \\
+35 & MAT (masking, 20M)$^\dagger$        & -0.42 (0.18) \\
+36 & Chemformer (mask)                   & -0.47 (0.19) \\
+37 & Uni-Mol (v1)                        & -0.49 (0.18) \\
+38 & MolBERT$^\dagger$                   & -0.53 (0.19) \\
+39 & ChemFM (3B)                         & -0.69 (0.19) \\
+40 & GraphMVP (CP)$^\dagger$             & -0.86 (0.21) \\
+41 & SimSon                              & -1.04 (0.21) \\
+42 & GEM                                 & -1.09 (0.21) \\
+43 & Chemprop (3D)$^\dagger$             & -1.13 (0.22) \\
+44 & SELFormer                           & -1.32 (0.22) \\
+45 & SimSon$^\dagger$                    & -1.69 (0.26) \\
+46 & GROVER (large)$^\dagger$            & -2.19 (0.29) \\
+47 & GraphFP (CP)                        & -2.64 (0.31) \\
+48 & GROVER (large)                      & -2.88 (0.34) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We additionally compute the probability of each model outperforming ECFP on both existing endpoints and a hypothetical new endpoint, detailed in App.~\ref{sec:ecfp_baseline}. There are many models that reliably outperform ECFP on most endpoints. However, under this latent ability model, there is no model that outperforms ECFP at $p = 0.05$ on a hypothetical new endpoint; the best performer is Monroe \citep{monroe} at $P = 0.81$, $p = 0.38$.
+
+
+\section{Conclusion}
+We develop a margin-aware latent ability model, adapted as a continuous analog of 2-parameter IRT \citep{lord1968, birnbaum1968}, and apply it to compare 48 representations: 34 frozen embeddings and 14 end-to-end fine-tuned models by evaluating on 17 endpoints from the OpenADMET Polaris \citep{asap2025, polaris}, ExpansionRx \citep{expansionrx}, and PXR \citep{pxr} competitions. We conclude that in the current data regime of ADMET modeling although many neural models outperform ECFP on existing endpoints, none conclusively outperform classical descriptors on a hypothetical new endpoint.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+
+\section{Variance inflation of the pairwise pseudo-likelihood}
+\label{app:inflation}
+
+For the sake of clarity, the notation used here does not carry over to App.~\ref{app:blam}.
+
+\subsection{Setup}
+We compare $M$ models across $E$ endpoints, and assume $W_{ij} + W_{ji} = N_{ij} = E$ for all pairs. The pairwise pseudo-log-likelihood is:
+\begin{equation}
+  \ell_P(\beta) = \sum_{i<j}\Bigl[ W_{ij}\log \pi_{ij} + W_{ji}\log(1 - \pi_{ij}) \Bigr],
+  \qquad \pi_{ij} = \sigma(\eta_{ij}), \quad \eta_{ij} = \beta_i - \beta_j .
+\end{equation} and under standard regularity conditions, $\Var(\nabla \ell) = -\mathbb{E}[\nabla^2 \ell]$ holds for a true likelihood.
+
+For simplicity, we take $E = 1$ and then let $X_{ij} = 1$ if model $i$ beats model $j$. The per pair score-contribution $\mathbf{U}^{(ij)} \equiv \nabla_\beta \ell_{ij} \in \mathbb{R}^M$ is:
+\begin{equation}
+  \mathbf{U}^{(ij)}
+  = \frac{\partial \ell_{ij}}{\partial \pi_{ij}}
+    \cdot \frac{\partial \pi_{ij}}{\partial \eta_{ij}}
+    \cdot \frac{\partial \eta_{ij}}{\partial \beta},
+\end{equation}
+whose three factors are
+\begin{equation}
+  \frac{\partial \ell_{ij}}{\partial \pi_{ij}}
+    = \frac{X_{ij}}{\pi_{ij}} - \frac{1 - X_{ij}}{1 - \pi_{ij}}
+    = \frac{X_{ij} - \pi_{ij}}{\pi_{ij}(1 - \pi_{ij})},
+  \qquad
+  \frac{\partial \pi_{ij}}{\partial \eta_{ij}} = \pi_{ij}(1 - \pi_{ij}),
+  \qquad
+  \frac{\partial \eta_{ij}}{\partial \beta} = e_i - e_j,
+\end{equation} where $e_i$ is the $i$-th standard basis vector. The first two factors cancel, yielding:
+\begin{equation}
+  \mathbf{U}^{(ij)} = (X_{ij} - \pi_{ij})(e_i - e_j).
+  \label{eq:score-pair}
+\end{equation}
+
+Now, we can see $\mathbb{E}[X_{ij}] = \pi_{ij}$ means $\mathbb{E}[\mathbf{U}^{(ij)}] = 0$. The pseudo-likelihood gives a consistent estimator of $\beta$, as claimed in Sec.~\ref{sec:limitations}. Note $\mathbf{U} \equiv \nabla_\beta \ell_P = \sum_{i<j} \mathbf{U}^{(ij)}$, so we have $\mathbb{E}[\mathbf{U}] = 0$.
+
+\subsection{Sandwich estimator}
+
+The pairwise likelihood is a composite likelihood \citep{lindsay1988, varin2011},
+for which the score remains an unbiased estimating function \citep{godambe1960}
+but the information identity fails. The correct asymptotic variance is the
+sandwich form \citep{white1982, kauermann2001}.
+
+Let $J \equiv \Var(\mathbf{U}) = \mathbb{E}[\mathbf{U}\mathbf{U}^\top]$. Expanding yields \begin{equation}
+  J = \sum_{i<j}\sum_{k<l} \Cov\!\left(\mathbf{U}^{(ij)}, \mathbf{U}^{(kl)}\right)
+    = \underbrace{\sum_{i<j} \Var\!\left(\mathbf{U}^{(ij)}\right)}_{=\,H}
+      \;+\; \underbrace{\sum_{(i,j) \neq (k,l)} \Cov\!\left(\mathbf{U}^{(ij)}, \mathbf{U}^{(kl)}\right)}_{=\,C}.
+\end{equation}
+
+The cross terms are 
+\begin{equation}
+  \Cov\!\left(\mathbf{U}^{(ij)}, \mathbf{U}^{(kl)}\right)
+  = \Cov(X_{ij}, X_{kl}) \cdot (e_i - e_j)(e_k - e_l)^\top,
+\end{equation}
+which vanish for uncorrelated pairwise comparisons.
+
+Recall the estimator $\hat{\beta}$ solves $\mathbf{U}(\hat\beta) = 0$. Taylor expanding about $\beta_0$ yields
+\begin{equation}
+  0 = \mathbf{U}(\hat\beta)
+    = \mathbf{U}(\beta_0) + \nabla_\beta \mathbf{U}(\beta_0)(\hat\beta - \beta_0)
+      + O\!\left(\|\hat\beta - \beta_0\|^2\right)
+  \;\Longrightarrow\;
+  \hat\beta - \beta_0 \approx H^{+}\mathbf{U}(\beta_0),
+\end{equation}
+which implies
+\begin{equation}
+  \Var(\hat\beta) \approx H^{+} \Var(\mathbf{U}(\beta_0)) H^{+} = H^{+} J H^{+}.
+  \label{eq:sandwich}
+\end{equation}
+
+The identifiability criterion makes $H$ singular, so we use the Moore-Penrose pseudoinverse $H^+$ throughout.
+
+\subsection{Computing \texorpdfstring{$J$}{J}}
+Evaluating at $\beta_0 = 0$ gives $\pi_{ij} = \frac{1}{2}$ for all pairs. From Eq.~\ref{eq:score-pair}, the $i$-th component of $\mathbf{U}$ is
+\begin{equation}
+  U_i = \sum_{j \neq i}(X_{ij} - \pi_{ij}) = R_i - \mathbb{E}[R_i],
+  \qquad R_i \equiv \sum_{j\neq i} X_{ij},
+\end{equation}
+where $R_i$ is the number of models that model $i$ beats. This gives 
+\begin{equation}
+    J_{ii} = \Var(R_i), \qquad J_{ij} = \Cov(R_i, R_j).
+\end{equation}
+
+Under our assumption of a uniformly random total order, $R_i$ is the zero-indexed rank of model $i$, meaning $J_{ii}$ is simply the variance of a discrete uniform distribution on $\{0, 1, ..., M-1\}$. This gives
+\begin{equation}
+    J_{ii} = \frac{M^2 - 1}{12}.
+\end{equation}
+
+Exchangeability gives
+\begin{equation}
+  0 = \Var\!\left(\sum_i R_i\right) = M\Var(R_i) + M(M-1)\Cov(R_i, R_j)
+  \;\Longrightarrow\;
+  J_{ij} = -\frac{\Var(R_i)}{M-1} = -\frac{M+1}{12}.
+\end{equation}
+
+We can collect terms to get
+\begin{equation}
+  J = \frac{M+1}{12}\left(M I_M - \mathbf{1}\mathbf{1}^\top\right) = \frac{M(M+1)}{12}\, P,
+  \qquad P = I_M - \tfrac{1}{M}\mathbf{1}\mathbf{1}^\top .
+  \label{eq:J}
+\end{equation}
+
+\subsection{Computing \texorpdfstring{$H$}{H}}
+Differentiating Eq.~\ref{eq:score-pair} again yields
+\begin{equation}
+  \nabla^2_\beta \ell_{ij} = -\pi_{ij}(1 - \pi_{ij})(e_i - e_j)(e_i - e_j)^\top,
+  \qquad
+  H = \sum_{i<j} \pi_{ij}(1 - \pi_{ij}) (e_i - e_j)(e_i - e_j)^\top.
+\end{equation}
+
+At $\beta_0 = 0$, it is easy to compute the diagonal terms
+\begin{equation}
+  H_{ii} = \sum_{j \neq i} \pi_{ij}(1 - \pi_{ij}) = \frac{M-1}{4},
+\end{equation} 
+and the off-diagonal terms
+\begin{equation}
+  H_{ij} = -\pi_{ij}(1 - \pi_{ij}) = -\frac{1}{4},
+\end{equation}
+so that
+\begin{equation}
+  H = \frac{1}{4}\left(M I_M - \mathbf{1}\mathbf{1}^\top\right) = \frac{M}{4}\, P .
+  \label{eq:H}
+\end{equation}
+
+\subsection{Inflation factor}
+We note by comparing Eq.~\ref{eq:J} and Eq.~\ref{eq:H}, both are multiples of the same projection $P$, which yields
+\begin{equation}
+  \boxed{\;J = \frac{M+1}{3}\,H\;}
+\end{equation}
+
+Substituting back into Eq.~\ref{eq:sandwich} and using $H^+HH^+ = H^+$,
+\begin{equation}
+  \boxed{\;\Var(\hat\beta) = H^{+}JH^{+} = \frac{M+1}{3}\,H^{+}\;}
+\end{equation}
+against the $\Var(\hat\beta_{C=0}) = H^{+}$ that the pseudo-likelihood reports. This means reported posterior interval widths are too narrow by a factor of $\sqrt{(M+1)/3}$.
+
+Bringing back $E$ endpoints, we note since both $H$ and $J$ accumulate these additively:
+\begin{equation}
+  H = \sum_e H^{(e)} = E\,H^{(1)},
+  \qquad
+  J = \Var\!\left(\sum_e \mathbf{U}^{(e)}\right) = E\,J^{(1)},
+\end{equation}
+we have
+\begin{equation}
+  \Var(\hat\beta) = \frac{M+1}{3E}\left(H^{(1)}\right)^{+},
+  \qquad
+  \Var(\hat\beta_{C=0}) = \frac{1}{E}\left(H^{(1)}\right)^{+}.
+\end{equation}
+
+Note, both estimators have the same factor of $1/E$, so collecting win counts on more endpoints does not affect the variance inflation factor.
+
+\subsection{Scope of this error}
+\label{app:scope}
+Our computation of variance inflation is for a point estimate of the MLE. To link this to the posterior distribution of the BBT model, we need to invoke the Bernstein-von Mises theorem, which links Bayesian and frequentist inference. The precise statement under a correctly specified likelihood is that the posterior distribution and the point estimate converge in total variation distance:
+\begin{equation}
+    ||P(\beta|W_{ij}) - \mathcal{N}(\hat{\beta}_E, E^{-1}\mathcal{I}(\beta_0)^{-1})||_{\text{TV}} \xrightarrow{P} 0.
+\end{equation}
+However, note this is in the limit of infinite sampling for a correctly specified likelihood, so it is not immediately clear if this is an issue in the finite sampling, mis-specified likelihood case.
+
+\citet{kleijn2012} say that under a mis-specified likelihood, the following asymptotic convergence holds:
+\begin{equation}
+    ||P(\beta |W_{ij}) - \mathcal{N}(\beta_0, E^{-1} (H^{(1)})^+)||_{\text{TV}} \xrightarrow{P} 0.
+\end{equation}
+but the point estimate satisfies:
+\begin{equation}
+    \hat{\beta} \xrightarrow{d} \mathcal{N}(\beta_0, E^{-1}(H^{(1)})^+J(H^{(1)})^+).
+\end{equation}
+
+To prove that this variance inflation is observed even in the finite case, we simulate BBT by sampling permutations from the Plackett-Luce distribution \citep{plackett1975, luce1959}:
+\begin{equation}
+    P(\pi) = \prod_{r = 1}^M \frac{e^{\beta_{\pi_r}}}{\sum_{s \geq r}e^{\beta_{\pi_s}}}.
+\end{equation}
+Note pairwise marginals of the Plackett-Luce distribution recover the Bradley-Terry distribution, so the MLE of the pairwise likelihood is still a consistent estimator.
+
+We directly simulate the Bayesian Bradley-Terry model with MCMC and compare the variances:
+\begin{equation}
+    \Var(\beta_0 - \beta_1), \qquad \Var_{\text{data}}(\mathbb{E}[\beta_0 - \beta_1 | \text{data}]),
+\end{equation}
+where the former is the variance reported by BBT and the latter is the true variance from the sampled ground truth. 
+
+We sample 200 permutations from the Plackett-Luce distributions for 10 models, each permutation corresponding to a hypothetical dataset. We compute the variance inflation factor for both the exchangeable null (where all latent abilities are identically zero) and a non-exchangeable probe of latent abilities linearly spaced between -1.5 and 1.5, inclusive. We run 1 chain of NUTS for 300 warmup steps, 500 sample steps, and replicate 3000 times.
+
+The exchangeable null yields a variance inflation factor of 3.662, and the non-exchangeable probe of 3.073, compared to the expected factor of $11/3$.
+
+
+\section{Bayesian latent ability model details}
+\label{app:blam}
+
+\subsection{Notation}
+For the sake of clarity, all the notation used for this section is consolidated into the table below.
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{ll}
+    \toprule
+    Symbol & Meaning \\
+    \midrule
+    $M$, $E$, $n_e$ & number of models, endpoints, and compounds in endpoint $e$ \\
+    $\hat{y}_{ie}$ & measured MAE of model $i$ on endpoint $e$, in $\log_{10}$ units \\
+    $\mu_e$ & endpoint difficulty \\
+    $\theta_i$ & latent ability of model $i$ \\
+    $a_e \geq 0$ & discrimination of endpoint $e$ \\
+    $u_{ie}$ & specialization of model $i$ on endpoint $e$ \\
+    $\omega_e$ & specialization scale for endpoint $e$ \\
+    $V_e$ & $M \times M$ sampling covariance of $\hat{y}_{\cdot e}$ \\
+    $v_{ie}$, $c_{ije}$ & diagonal and off-diagonal entries of $V_e$ \\
+    $\Sigma_e$ & $\omega_e^2 I_M + V_e$ \\
+    $a_{ice}$ & Entry $ci$ of the MAE matrix per endpoint $(A_e)$ \\
+    $G_{ee'}$ & cross-endpoint covariance of MAE \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Identifiability}
+Note from Eq.~\ref{eq:decomposition}, translations of $\theta$ are absorbed by $\mu_e$, and scalings and sign flips by $a_e$. Translations are fixed by constraining
+\begin{equation}
+    \sum_i \theta_i = 0
+\end{equation}
+scalings by having a unit-scale prior, and sign flips by requiring $a_e \geq 0$. This yields the prior
+\begin{equation}
+  \theta \sim \mathcal{N}(0, P), \qquad P = I_M - \tfrac{1}{M}\mathbf{1}\mathbf{1}^\top.
+\end{equation}
+
+Let $Q \in \mathbb{R}^{M \times (M-1)}$ have orthonormal columns spanning $\mathbf{1}^\perp$, so $Q^\top Q = I_{M-1}$ and $QQ^\top = P$. Define
+\begin{equation}
+  \theta = Qz, \qquad z \sim \mathcal{N}(0, I_{M-1}),
+\end{equation}
+which then gives $\mathbf{1}^\top \theta = 0$ by construction and
+$\Var(\theta) = QQ^\top = P$, recovering the prior in
+Section~\ref{sec:blam} exactly.
+
+\subsection{Measurement}
+We directly measure the MAE, in $\log_{10}$-transformed space, so we assume observations are noisy
+\begin{equation}
+    \hat{y}_{\cdot e} = y_{\cdot e} + \epsilon_{\cdot e}, \qquad \epsilon_{\cdot e} \sim \mathcal{N}(0, V_e).
+\end{equation}
+
+Since we fit models on the same inputs ($\geq 95\%$ input overlap on all pairs), measured errors are correlated. We estimate $V_e$ (see ~\ref{app:pipeline}), so taking it as a given yields the observation model for endpoint $e$ as
+\begin{equation}
+  \hat{y}_{\cdot e} \mid \theta, \mu_e, a_e, \omega_e
+  \;\sim\; \mathcal{N}_M\!\left(\mu_e \mathbf{1} - a_e \theta,\;
+  \Sigma_e \right),
+  \qquad \Sigma_e = \omega_e^2 I_M + V_e
+  \label{eq:observation}
+\end{equation}
+
+where the variance follows from analytically marginalizing $u_{\cdot e}$. 
+
+\subsection{Margins}
+\label{app:margins}
+Margins between models now follow from Eq.~\ref{eq:decomposition} instead of being given as data. Define $d_{ije} \equiv y_{je} - y_{ie}$, which the observational model says is equivalent to
+\begin{equation}
+  d_{ije} = a_e(\theta_i - \theta_j) + (u_{je} - u_{ie}).
+\end{equation}
+Conditioning on ability gives $d_{ije} \mid \theta \sim \mathcal{N}(a_e\delta_{ij}, 2\omega_e^2)$. From this, we can immediately derive Eq.~\ref{eq:newendpoint} by computing $P(d_{ij, \text{new}} > 0)$.
+
+However, the estimator of the margin carries the measurement error $\epsilon_{je} - \epsilon_{ie}$, which gives
+\begin{equation}
+  \hat{d}_{ije} \mid \theta \sim \mathcal{N}\!\left(a_e\delta_{ij},\; \tau_{ije}^2\right),
+  \qquad
+  \tau_{ije}^2 = 2\omega_e^2 + v_{ie} + v_{je} - 2c_{ije}.
+\end{equation}
+
+Note the $-2c_{ije}$ term is why a shared set of input molecules is beneficial, positive correlation between model errors on an endpoint lowers the variance of the margin estimator.
+
+\subsection{Experimental pipeline}
+\label{app:pipeline}
+
+\paragraph{Step 1: Scoring errors.} For each endpoint $e$, we store $A_e \in \mathbb{R}^{n_e \times M}_{\geq 0}$ where entries are
+\begin{equation}
+  (A_e)_{ci} = \left| \hat{p}_{ice} - t_{ce} \right|,
+\end{equation}
+the absolute error of model $i$ on compound $c$, where $\hat{p}_{ice}$ is the
+prediction and $t_{ce}$ the measured value. Both of these values are computed in $\log_{10}$-scaled space.
+
+\paragraph{Step 2: MAE.}
+Averaging down the columns yields the empirical MAE,
+\begin{equation}
+    \hat{y}_{ie} = \frac{1}{n_e} \sum_{c=1}^{n_e} (A_e)_{ci}.
+\end{equation}
+
+\paragraph{Step 3: sampling covariance.}
+Because $\hat{y}_{\cdot e}$ is a vector of column means of $A_e$, its sampling
+covariance is the compound-level covariance divided by $n_e$:
+\begin{equation}
+  (S_e)_{ij} = \frac{1}{n_e - 1}\sum_{c=1}^{n_e}
+    \bigl((A_e)_{ci} - \hat{y}_{ie}\bigr)\bigl((A_e)_{cj} - \hat{y}_{je}\bigr),
+  \qquad V_e = \frac{1}{n_e} S_e .
+\end{equation}
+
+\paragraph{Step 4: MCMC}
+The free parameters are $z \in \mathbb{R}^{M-1}$,
+$\mu \in \mathbb{R}^{E}$, $\tilde{a} \in \mathbb{R}^{E}_{\geq 0}$,
+$\tilde{\omega} \in \mathbb{R}^{E}_{\geq 0}$, and
+$\sigma_a, \sigma_\omega \in \mathbb{R}_{>0}$. Up to an additive constant, the
+log density contributed by endpoint $e$ under Eq.~\ref{eq:observation} is
+\begin{equation}
+  \ell_e = -\tfrac{1}{2}\log\det\Sigma_e - \tfrac{1}{2} r_{\cdot e}^\top \Sigma_e^{-1} r_{\cdot e},
+  \qquad
+  r_{\cdot e} \equiv \hat{y}_{\cdot e} - \mu_e\mathbf{1} + a_e\theta,
+\end{equation}
+with $\ell = \sum_e \ell_e$.
+
+Derivatives of this log likelihood with respect to each parameter are computed via automatic differentiation in NumPyro.
+
+\paragraph{Step 5: Report quantities}
+From the MCMC simulation, we can compute useful statistics, including latent abilities:
+\begin{equation}
+    \hat{\theta}_i \sim \mathcal{N}(\bar{\theta}_i, \Var(\theta_i^{(s)})),
+\end{equation}
+and the probability that model $i$ beats model $j$ on a new endpoint:
+\begin{gather}
+    P(i \succ j) = \Phi\!\left(\frac{a_{\text{new}}^{(s)}\delta_{ij}^{(s)}}{\sqrt{2}\,\omega_{\text{new}}^{(s)}}\right), \\
+    a_{\text{new}}^{(s)} \sim \text{Half-Normal}(0, \sigma_a^{(s)}), \qquad
+    \omega_{\text{new}}^{(s)} \sim \text{Half-Normal}(0, \sigma_\omega^{(s)}).
+\end{gather}
+
+\subsection{Prior specification}
+The sample variance for endpoint $e$ is computed as
+\begin{equation}
+    s_e^2 = \frac{1}{M-1}\sum_i (\hat{y}_{ie} - \bar{y}_e)^2 = \frac{1}{M-1}||P\hat{y}_{\cdot e}||^2,
+\end{equation} but there is still measurement noise.
+
+Taking the expectation over $\epsilon_{\cdot e} \sim \mathcal{N}(0, V_e)$, we get
+\begin{equation}
+    \mathbb{E}_{\epsilon}[s_e^2] = \frac{1}{M-1}||Py_{\cdot e}||^2 + \frac{1}{M-1}\tr(V_eP) = \frac{1}{M-1}||Py_{\cdot e}||^2 + (\bar{v}_e - \bar{c}_e).
+\end{equation}
+
+Multiplying Eq.~\ref{eq:decomposition} by $P$ yields
+\begin{equation}
+    Py_{\cdot e} = -a_e\theta + Pu_{\cdot e},
+\end{equation}
+so we can write
+\begin{equation}
+    \mathbb{E}[||Py_{\cdot e}||^2] = a_e^2\tr(P) + \omega_e^2 \tr(P) = (a_e^2 + \omega_e^2)(M-1)
+\end{equation}
+under the used priors.
+
+This gives us
+\begin{equation}
+    \mathbb{E}[s_e^2 - (\bar{v}_e - \bar{c}_e)] = a_e^2 + \omega_e^2,
+\end{equation}
+which means the noise-corrected sample variance is an unbiased estimator of the spread on endpoint $e$.
+
+Now we can define
+\begin{equation}
+    \tilde{s}_e^2 = \max(s_e^2 - (\bar{v}_e - \bar{c}_e), \epsilon_0), \qquad \hat{s} = \operatorname{median}_e \tilde{s}_e,
+\end{equation}
+where we use $\epsilon_0 = 10^{-6}$, to ensure the $\log \hat{s}$ is finite.
+
+Note $\tilde{a}_e, \tilde{\omega}_e \sim \text{Half-Normal(1)}$ both have unit second moment, which implies $\mathbb{E}[a_e^2|\sigma_a]=\sigma_a^2$ and similarly for $\omega_e$. Noting $\sigma_a^2 + \sigma_\omega^2 = \hat{s}^2$, and imposing $\sigma_a = \sigma_\omega$ to show no prior preference for ability versus specialization, we get
+\begin{equation}
+    \sigma_a = \sigma_\omega = \hat{s}/\sqrt{2}
+\end{equation}
+which we use as the prior median for each.
+
+\section{Experimental Details and Results}
+
+\subsection{3D Descriptors}
+\label{app:descriptors}
+
+
+The RDKit-3D descriptors from Table~\ref{tab:models} concatenates seven descriptor blocks computed by RDKit's \texttt{rdMolDescriptors} and \texttt{Descriptors3D} modules \citep{rdkit} (Table~\ref{tab:rdkit3d}). The 10 shape descriptors are individually named, and WHIM, GETAWAY, AUTOCORR3D, RDF, and MORSE are each returned by RDKit as a single fixed-length float vector.
+
+\begin{table}[H]
+\centering
+\caption{Composition of the 912-dimensional RDKit-3D descriptor vector.}
+\label{tab:rdkit3d}
+\begin{tabular}{llr}
+\toprule
+Block & Description & Count \\
+\midrule
+Shape & Asphericity, Eccentricity, InertialShapeFactor, NPR1, NPR2, & 10 \\
+      & PMI1, PMI2, PMI3, RadiusOfGyration, SpherocityIndex & \\
+PBF & Plane-of-best-fit distance & 1 \\
+WHIM & Weighted Holistic Invariant Molecular descriptors & 114 \\
+GETAWAY & GEometry, Topology, and Atom-Weights AssemblY descriptors & 273 \\
+AUTOCORR3D & 3D autocorrelation descriptors & 80 \\
+RDF & Radial distribution function descriptors & 210 \\
+MORSE & Molecule representation of structures based on electron diffraction & 224 \\
+\midrule
+Total & & 912 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\subsection{Scaffold hyperparameters}
+For random forest, k-nearest neighbors, ridge regression, we use scikit-learn's \texttt{GridSearchCV} \citep{pedregosa2011} with a 5-fold search over:
+\begin{itemize}
+    \item \textbf{Random forest:} We use the parameters \texttt{min\_samples\_split} $\in \{2,4,6,8,10\}$, \texttt{n\_estimators}$=200$, \texttt{max\_depth}$=20$.
+    \item \textbf{Ridge regression:} We sweep logarithmically over the regularization parameter, $\alpha \in [10^{-2}, 10^{3}]$ with 10 values sampled.
+    \item \textbf{k-nearest neighbors:} We sweep over \texttt{n\_neighbors} $\in \{1,3,5,7,9\}$ on standardized features, using Tanimoto-count distance for count-valued embeddings and cosine distance otherwise.
+\end{itemize}
+
+TabICL and TabPFN are each scored via 5-fold CV score, then fit onto all the training data. We standardize and clamp features to $[-6, 6]$. TabPFNv3 \citep{tabpfn3} is used.
+
+\subsection{Per-endpoint fitted parameters}
+Table~\ref{tab:endpoint-summary} gives the posterior mean (and standard deviation in parentheses) for $\mu_e, a_e, \omega_e$ and also the number of compounds per endpoint, $n_e$, sorted by increasing endpoint discrimination $a_e$.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Per-endpoint posterior summary (posterior SD in parentheses). $\mu_e$ and $\omega_e$ are in $\log_{10}$-MAE units; $a_e$ is dimensionless (Eq.~\ref{eq:decomposition}). 
+Endpoints are reported in order of increasing $a_e$.}
+\label{tab:endpoint-summary}
+\begin{tabular}{lrrrr}
+\toprule
+Endpoint & $\mu_e$ & $a_e$ & $\omega_e$ & $n_e$ \\
+\midrule
+ExpansionRx MLM CLint & 0.402 (0.008) & 0.025 (0.005) & 0.024 (0.003) & 1170 \\
+ExpansionRx HLM CLint & 0.334 (0.008) & 0.029 (0.004) & 0.018 (0.003) & 782 \\
+ExpansionRx Caco ER & 0.398 (0.010) & 0.032 (0.005) & 0.027 (0.003) & 1616 \\
+ExpansionRx Mouse PPB & 0.275 (0.008) & 0.036 (0.006) & 0.028 (0.004) & 454 \\
+Polaris ADMET HLM & 0.412 (0.016) & 0.038 (0.007) & 0.019 (0.004) & 102 \\
+ExpansionRx Caco Papp AB & 0.335 (0.007) & 0.040 (0.006) & 0.031 (0.005) & 1616 \\
+ExpansionRx Mouse BPB & 0.232 (0.007) & 0.042 (0.006) & 0.026 (0.003) & 451 \\
+ExpansionRx Mouse MPB & 0.259 (0.011) & 0.042 (0.006) & 0.020 (0.004) & 209 \\
+Polaris ADMET MDR1-MDCKII & 0.260 (0.012) & 0.052 (0.009) & 0.025 (0.006) & 126 \\
+Polaris Potency MERS-CoV & 0.565 (0.028) & 0.055 (0.011) & 0.033 (0.007) & 292 \\
+ExpansionRx KSOL & 0.463 (0.009) & 0.056 (0.009) & 0.042 (0.005) & 2170 \\
+% NB: KSOL/MERS-CoV a_e values are within 0.001 of each other and the sort
+% order between them is not meaningful at this precision.
+Polaris ADMET MLM & 0.474 (0.020) & 0.058 (0.012) & 0.052 (0.009) & 117 \\
+ExpansionRx LogD & 0.569 (0.016) & 0.065 (0.016) & 0.093 (0.010) & 2270 \\
+PXR pEC50 & 0.590 (0.021) & 0.067 (0.010) & 0.046 (0.006) & 513 \\
+Polaris ADMET KSOL & 0.218 (0.022) & 0.089 (0.014) & 0.060 (0.008) & 112 \\
+Polaris Potency SARS-CoV-2 & 0.662 (0.032) & 0.118 (0.020) & 0.082 (0.013) & 258 \\
+Polaris ADMET LogD & 0.609 (0.030) & 0.140 (0.028) & 0.137 (0.028) & 126 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Convergence diagnostics}
+\label{app:diagnostics}
+Table~\ref{tab:diagnostics} gives the Gelman-Rubin statistic ($\hat{R}$), and effective sample size (out of $16 \times 4{,}000 = 64{,}000$ post-warmup draws), grouped by parameter type.
+
+\begin{table}[H]
+\centering
+\caption{Convergence diagnostics by parameter group (min--max across all parameters of that type).}
+\label{tab:diagnostics}
+\begin{tabular}{lrr}
+\toprule
+Parameter & $\hat{R}$ & Effective sample size \\
+\midrule
+$\mu_e$ (17) & 0.9998--1.0000 & 102{,}759--128{,}221 \\
+$a_e$ (17) & 1.0001--1.0008 & 13{,}213--29{,}165 \\
+$\omega_e$ (17) & 0.9999--1.0006 & 38{,}516--109{,}311 \\
+$\sigma_a$ & 1.0012 & 7{,}542 \\
+$\sigma_\omega$ & 1.0033 & 6{,}743 \\
+$\theta_i$ (48) & 0.9999--1.0010 & 10{,}041--105{,}330 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\subsection{ECFP baseline}
+\label{sec:ecfp_baseline}
+We examine two methods of comparison to an existing baseline. 
+\paragraph{Observed-endpoint comparison}
+For observed endpoints, the specialization, $u_{ie}^{(s)}$ has a closed form given the observation of $r_{\cdot e}^{(s)}$ and the parameters $\theta^{(s)}, \mu_e^{(s)}, a_e^{(s)}, \omega_e^{(s)}$ per sample as a Gaussian:
+\begin{equation}
+    u_{\cdot e}^{(s)} | r_{\cdot e}^{(s)} \sim \mathcal{N}\bigl( (\omega_e^{(s)})^2 (\Sigma_e^{(s)})^{-1} r_{\cdot e}^{(s)}, (\omega_e^{(s)})^2I - (\omega_e^{(s)})^4(\Sigma_e^{(s)})^{-1}
+    \bigr).
+\end{equation}
+
+Then we can directly sample from this distribution to get the pairwise margin per sample as:
+\begin{equation}
+    d_{ije}^{(s)} = a_e^{(s)}(\theta_i^{(s)} - \theta_j^{(s)}) + (u_{je}^{(s)} - u_{ie}^{(s)}),
+\end{equation}
+
+which allows us to then compute $P(i \succ j)$ on endpoint $e$ as the empirical fraction of samples with $d_{ije}^{(s)} > 0$.
+
+We compute this probability with model $j$ as ECFP, and report for each of the existing 17 endpoints, $P(i \succ \text{ECFP})$ for each of the 48 representations (excluding ECFP, as it is the baseline being compared against), in Table~\ref{tab:ecfp-observed}.
+
+\providecommand{\rot}[1]{\rotatebox[origin=lB]{90}{#1}}
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{1.5pt}
+\caption{Posterior probability that each representation beats the ECFP
+baseline on each of the 17 observed endpoints, $P(i \succ \text{ECFP})$. Rows are ordered by latent ability and
+numbered by their rank in Table~\ref{tab:thetas}. $^\dagger$ marks models fine-tuned end to end, all others
+are frozen embeddings. \textbf{Bold} marks entries significant at the
+0.05 level in either direction ($P > 0.95$ or $P < 0.05$).
+Boltzmann-averaged Mordred/RDKit descriptors are abbreviated Bltz.}
+\label{tab:ecfp-observed}
+\makebox[\textwidth][c]{%
+\begin{tabular}{@{}rlrrrrrrrrrrrrrrrrr@{}}
+\toprule
+ & & \multicolumn{9}{c}{ExpansionRx} & \multicolumn{7}{c}{Polaris} & \multicolumn{1}{c}{PXR} \\
+\cmidrule(lr){3-11}\cmidrule(lr){12-18}\cmidrule(lr){19-19}
+\# & Representation & \rot{KSOL} & \rot{LogD} & \rot{Caco ER} & \rot{Caco Papp AB} & \rot{HLM CLint} & \rot{MLM CLint} & \rot{Mouse BPB} & \rot{Mouse MPB} & \rot{Mouse PPB} & \rot{ADMET HLM} & \rot{ADMET KSOL} & \rot{ADMET LogD} & \rot{ADMET MDR1-MDCKII} & \rot{ADMET MLM} & \rot{Potency MERS-CoV} & \rot{Potency SARS-CoV-2} & \rot{pEC50} \\
+\midrule
+1 & Monroe & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.43 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} \\
+2 & Mordred (2D only) & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.88 & \textbf{1.00} & \textbf{1.00} & 0.94 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.58 & \textbf{0.99} & \textbf{1.00} & \textbf{1.00} \\
+3 & Mordred (3D, Boltzmann) & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.98} & \textbf{1.00} & \textbf{1.00} & 0.76 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.40 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} \\
+4 & RDKit-2D & 0.85 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & 0.55 & \textbf{1.00} & \textbf{1.00} & 0.18 & 0.82 & \textbf{0.98} & \textbf{1.00} \\
+5 & Mordred 2D + RDKit 3D (Bltz.) & \textbf{1.00} & \textbf{0.99} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & \textbf{0.98} & \textbf{1.00} & 0.85 & \textbf{1.00} & \textbf{0.99} & \textbf{1.00} & \textbf{1.00} & 0.39 & \textbf{0.99} & \textbf{1.00} & \textbf{1.00} \\
+6 & MiniMol & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.93 & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & 0.47 & \textbf{0.99} & \textbf{1.00} & \textbf{1.00} \\
+7 & ChemBERTa (10M, MTR) & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & \textbf{0.05} & \textbf{1.00} & \textbf{0.98} & \textbf{1.00} & \textbf{0.99} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.45 & 0.91 & \textbf{0.99} & \textbf{1.00} \\
+8 & KERMT$^\dagger$ & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.31 & 0.15 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.97} & \textbf{0.03} & \textbf{1.00} & \textbf{1.00} & 0.63 & 0.65 & \textbf{1.00} & \textbf{1.00} \\
+9 & Uni-Mol (v1)$^\dagger$ & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.95} & 0.75 & \textbf{1.00} & 0.76 & \textbf{1.00} & \textbf{1.00} & \textbf{0.05} & \textbf{1.00} & \textbf{1.00} & \textbf{0.96} & \textbf{0.00} & \textbf{0.01} & \textbf{1.00} \\
+10 & MAT (masking, 20M) & 0.81 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & 0.46 & \textbf{0.01} & \textbf{1.00} & \textbf{0.99} & \textbf{1.00} & 0.58 & \textbf{1.00} & \textbf{1.00} & 0.50 & 0.61 & \textbf{1.00} & \textbf{1.00} \\
+11 & KERMT & \textbf{0.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.96} & \textbf{1.00} & \textbf{1.00} & \textbf{0.96} & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & 0.25 & 0.21 & \textbf{1.00} & \textbf{1.00} \\
+12 & R-MAT (4M) & \textbf{0.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.89 & 0.28 & \textbf{1.00} & 0.93 & \textbf{1.00} & \textbf{0.97} & \textbf{0.99} & \textbf{1.00} & 0.80 & 0.51 & \textbf{0.99} & \textbf{1.00} \\
+13 & Mol2vec & 0.45 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & 0.44 & \textbf{1.00} & \textbf{0.98} & \textbf{1.00} & 0.80 & \textbf{1.00} & 0.85 & 0.93 & 0.22 & \textbf{0.95} & \textbf{0.99} & \textbf{1.00} \\
+14 & MolR-TAG (1024) & 0.71 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.98} & \textbf{0.02} & \textbf{0.02} & \textbf{1.00} & 0.86 & \textbf{1.00} & 0.79 & \textbf{1.00} & \textbf{0.99} & 0.93 & 0.89 & \textbf{1.00} & \textbf{1.00} \\
+15 & MolBERT & \textbf{0.99} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.84 & 0.46 & \textbf{1.00} & 0.26 & 0.87 & \textbf{0.00} & 0.87 & \textbf{1.00} & 0.72 & \textbf{0.02} & \textbf{0.99} & \textbf{1.00} \\
+16 & GEM$^\dagger$ & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.70 & \textbf{0.00} & \textbf{1.00} & \textbf{1.00} & 0.91 & 0.82 & 0.57 & \textbf{1.00} & \textbf{0.99} & 0.07 & 0.44 & 0.91 & \textbf{1.00} \\
+17 & Chemeleon (PubChem, mean) & \textbf{1.00} & 0.21 & \textbf{0.01} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.24 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & \textbf{1.00} & \textbf{1.00} & 0.62 & 0.39 & \textbf{1.00} & \textbf{1.00} \\
+18 & RDKit-3D (mean) & \textbf{0.99} & 0.93 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.99} & \textbf{0.03} & \textbf{0.98} & 0.85 & 0.68 & \textbf{0.98} & 0.41 & \textbf{0.98} & \textbf{1.00} & \textbf{1.00} \\
+19 & Uni-Mol (v2)$^\dagger$ & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & \textbf{1.00} & 0.51 & \textbf{1.00} & 0.27 & \textbf{1.00} & 0.79 & \textbf{0.00} & 0.76 & 0.38 & 0.40 & \textbf{0.01} & 0.27 & \textbf{1.00} \\
+20 & CDDD & 0.86 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.03} & 0.07 & 0.26 & \textbf{0.95} & \textbf{0.95} & 0.18 & \textbf{1.00} & 0.73 & 0.95 & 0.24 & \textbf{0.99} & \textbf{1.00} \\
+21 & Atom Pair (count) & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.93 & 0.12 & \textbf{0.98} & \textbf{1.00} & 0.67 & \textbf{0.97} & \textbf{0.02} & \textbf{1.00} & 0.07 & \textbf{1.00} & \textbf{0.95} & 0.81 \\
+22 & CLAMP & \textbf{0.98} & 0.25 & \textbf{1.00} & \textbf{1.00} & \textbf{0.01} & \textbf{0.01} & 0.81 & \textbf{0.97} & 0.79 & 0.90 & \textbf{1.00} & \textbf{1.00} & 0.46 & 0.23 & \textbf{1.00} & \textbf{0.99} & \textbf{1.00} \\
+23 & SAND & \textbf{0.95} & \textbf{0.00} & \textbf{0.01} & \textbf{1.00} & 0.19 & 0.39 & 0.25 & \textbf{1.00} & 0.83 & 0.88 & 0.68 & 0.90 & 0.78 & 0.07 & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} \\
+24 & R-MAT (4M)$^\dagger$ & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & 0.81 & \textbf{1.00} & 0.26 & \textbf{1.00} & 0.58 & \textbf{1.00} & 0.47 & \textbf{0.00} & \textbf{1.00} & 0.55 & \textbf{0.00} & \textbf{0.01} & \textbf{0.00} & \textbf{1.00} \\
+25 & Chemeleon (PubChem, mean)$^\dagger$ & \textbf{1.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.00} & \textbf{0.01} & \textbf{0.00} & \textbf{1.00} & \textbf{0.98} & \textbf{1.00} & 0.84 & \textbf{0.00} & \textbf{1.00} & 0.15 & 0.11 & \textbf{0.04} & \textbf{1.00} & \textbf{1.00} \\
+26 & COATI & 0.60 & 0.30 & \textbf{1.00} & \textbf{1.00} & \textbf{0.99} & \textbf{0.00} & \textbf{0.00} & 0.93 & 0.70 & 0.83 & 0.47 & 0.48 & 0.57 & 0.19 & 0.19 & 0.16 & \textbf{1.00} \\
+27 & Uni-Mol (v2) & 0.11 & 0.31 & \textbf{1.00} & \textbf{1.00} & 0.76 & \textbf{0.00} & 0.08 & 0.07 & 0.70 & 0.94 & \textbf{0.00} & \textbf{1.00} & 0.95 & 0.07 & \textbf{0.02} & \textbf{0.00} & \textbf{1.00} \\
+29 & Topological Torsion (count) & \textbf{0.01} & 0.35 & \textbf{1.00} & \textbf{1.00} & \textbf{0.00} & \textbf{0.99} & 0.10 & 0.70 & 0.84 & 0.41 & 0.83 & 0.20 & 0.34 & 0.09 & 0.93 & 0.26 & \textbf{0.99} \\
+30 & SELFormer$^\dagger$ & \textbf{0.00} & \textbf{1.00} & 0.09 & 0.11 & \textbf{0.00} & \textbf{0.00} & \textbf{1.00} & 0.42 & \textbf{1.00} & 0.39 & \textbf{0.00} & 0.35 & 0.07 & \textbf{0.03} & \textbf{0.00} & 0.84 & 0.81 \\
+31 & Chemprop (2D)$^\dagger$ & 0.08 & \textbf{1.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.01} & \textbf{0.00} & 0.12 & 0.15 & \textbf{0.00} & 0.61 & \textbf{0.00} & \textbf{1.00} & 0.31 & \textbf{0.00} & \textbf{0.00} & \textbf{0.04} & \textbf{1.00} \\
+32 & MoLFormer-XL (10\%) & \textbf{0.00} & 0.93 & \textbf{1.00} & \textbf{1.00} & \textbf{0.02} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.05} & \textbf{0.00} & \textbf{1.00} & 0.85 & \textbf{0.00} & 0.09 & 0.06 & \textbf{1.00} \\
+33 & ChemGPT (4.7M) & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.04} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.87 & 0.43 & 0.12 & 0.09 & \textbf{0.98} & 0.27 & \textbf{0.01} & \textbf{0.00} & \textbf{0.02} & \textbf{0.01} \\
+34 & GraphMVP (Contextual, sum) & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.47 & \textbf{0.02} & \textbf{0.00} & \textbf{0.00} & 0.66 & \textbf{0.03} & 0.18 & \textbf{0.00} & \textbf{1.00} & 0.35 & \textbf{0.01} & \textbf{0.00} & \textbf{0.00} & 0.76 \\
+35 & MAT (masking, 20M)$^\dagger$ & \textbf{1.00} & \textbf{1.00} & \textbf{0.00} & 0.78 & 0.05 & \textbf{0.00} & \textbf{0.00} & 0.16 & \textbf{0.00} & 0.11 & \textbf{0.00} & \textbf{1.00} & \textbf{0.97} & 0.30 & \textbf{0.00} & \textbf{0.00} & \textbf{1.00} \\
+36 & Chemformer (mask) & \textbf{0.00} & 0.85 & \textbf{0.00} & \textbf{1.00} & \textbf{0.02} & \textbf{0.00} & \textbf{0.00} & \textbf{0.02} & \textbf{0.02} & 0.24 & \textbf{0.05} & \textbf{1.00} & 0.31 & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.97} \\
+37 & Uni-Mol (v1) & \textbf{0.00} & \textbf{0.00} & \textbf{0.01} & 0.86 & \textbf{0.00} & \textbf{0.00} & 0.16 & \textbf{0.02} & \textbf{0.01} & \textbf{0.01} & \textbf{0.00} & 0.87 & \textbf{0.03} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.29 \\
+38 & MolBERT$^\dagger$ & \textbf{1.00} & \textbf{1.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.01} & \textbf{0.00} & 0.09 & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.04} & \textbf{0.01} & \textbf{0.00} & \textbf{0.00} & 0.53 & \textbf{1.00} \\
+39 & ChemFM (3B) & \textbf{0.00} & 0.91 & \textbf{0.01} & \textbf{0.98} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.04} & \textbf{0.00} & \textbf{0.00} & 0.21 & \textbf{0.00} & \textbf{0.00} & 0.48 & 0.50 \\
+40 & GraphMVP (CP)$^\dagger$ & \textbf{0.00} & \textbf{1.00} & \textbf{0.00} & \textbf{0.00} & 0.08 & \textbf{0.00} & 0.36 & 0.73 & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.05 & \textbf{0.00} & \textbf{0.00} & \textbf{0.98} \\
+41 & SimSon & \textbf{0.00} & \textbf{0.00} & 0.34 & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.02} & \textbf{0.00} & \textbf{0.02} & \textbf{0.00} & \textbf{1.00} & \textbf{0.01} & \textbf{0.00} & \textbf{0.00} & \textbf{0.01} & \textbf{0.00} \\
+42 & GEM & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.39 & \textbf{0.03} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} \\
+43 & Chemprop (3D)$^\dagger$ & \textbf{0.00} & 0.75 & 0.71 & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.06 & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.19 & \textbf{0.01} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.09 \\
+44 & SELFormer & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.05} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.02} & \textbf{0.00} & \textbf{0.01} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} \\
+45 & SimSon$^\dagger$ & \textbf{0.00} & \textbf{0.00} & \textbf{1.00} & \textbf{1.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.11 \\
+46 & GROVER (large)$^\dagger$ & \textbf{0.00} & \textbf{1.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.27 & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & 0.10 \\
+47 & GraphFP (CP) & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} \\
+48 & GROVER (large) & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} & \textbf{0.00} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\paragraph{Unseen endpoint comparison} Recalling from section~\ref{app:pipeline}, computing population priors for the distributions:
+\begin{equation}
+    a_{\text{new}}^{(s)} \sim \text{Half-Normal}(0, \sigma_a^{(s)}), \qquad
+    \omega_{\text{new}}^{(s)} \sim \text{Half-Normal}(0, \sigma_\omega^{(s)}).
+\end{equation}
+allows us to compute the probability of model $i$ beating model $j$ on a hypothetical new endpoint as:
+\begin{gather}
+    P(i \succ j) = \Phi\!\left(\frac{a_{\text{new}}^{(s)}\delta_{ij}^{(s)}}{\sqrt{2}\,\omega_{\text{new}}^{(s)}}\right).
+\end{gather}
+We compute this probability for each of the 48 representations (excluding ECFP again) in Table~\ref{tab:ecfp-new}.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\caption{Posterior probability that each representation beats the ECFP
+baseline on an unseen endpoint, $P(i \succ \text{ECFP})$, obtained by drawing
+$a_{\text{new}}, \omega_{\text{new}}$ from their population priors
+(Eq.~\ref{eq:newendpoint}). Rows are ordered by latent ability and numbered by
+their rank in Table~\ref{tab:thetas}; rank 28 is absent because it is ECFP
+itself. $^\dagger$ marks models fine-tuned end to end, all others are frozen
+embeddings. Boltzmann-averaged descriptors are abbreviated Bltz.
+$P \equiv P(i \succ \text{ECFP})$. No entry is significant at the 0.05 level in
+either direction, so none is bolded.}
+\label{tab:ecfp-new}
+\begin{tabular}[t]{@{}rlr@{}}
+\toprule
+\# & Representation & $P$ \\
+\midrule
+1 & Monroe & 0.811 \\
+2 & Mordred (2D only) & 0.779 \\
+3 & Mordred (3D, Boltzmann) & 0.779 \\
+4 & RDKit-2D & 0.765 \\
+5 & Mordred 2D + RDKit 3D (Bltz.) & 0.763 \\
+6 & MiniMol & 0.762 \\
+7 & ChemBERTa (10M, MTR) & 0.749 \\
+8 & KERMT$^\dagger$ & 0.748 \\
+9 & Uni-Mol (v1)$^\dagger$ & 0.740 \\
+10 & MAT (masking, 20M) & 0.735 \\
+11 & KERMT & 0.732 \\
+12 & R-MAT (4M) & 0.725 \\
+13 & Mol2vec & 0.710 \\
+14 & MolR-TAG (1024) & 0.703 \\
+15 & MolBERT & 0.703 \\
+16 & GEM$^\dagger$ & 0.701 \\
+17 & Chemeleon (PubChem, mean) & 0.694 \\
+18 & RDKit-3D (mean) & 0.663 \\
+19 & Uni-Mol (v2)$^\dagger$ & 0.653 \\
+20 & CDDD & 0.652 \\
+21 & Atom Pair (count) & 0.645 \\
+22 & CLAMP & 0.639 \\
+23 & SAND & 0.633 \\
+24 & R-MAT (4M)$^\dagger$ & 0.605 \\
+\bottomrule
+\end{tabular}
+\hfill
+\begin{tabular}[t]{@{}rlr@{}}
+\toprule
+\# & Representation & $P$ \\
+\midrule
+25 & Chemeleon (PubChem, mean)$^\dagger$ & 0.603 \\
+26 & COATI & 0.561 \\
+27 & Uni-Mol (v2) & 0.538 \\
+29 & Topological Torsion (count) & 0.491 \\
+30 & SELFormer$^\dagger$ & 0.361 \\
+31 & Chemprop (2D)$^\dagger$ & 0.324 \\
+32 & MoLFormer-XL (10\%) & 0.319 \\
+33 & ChemGPT (4.7M) & 0.299 \\
+34 & GraphMVP (Contextual, sum) & 0.296 \\
+35 & MAT (masking, 20M)$^\dagger$ & 0.288 \\
+36 & Chemformer (mask) & 0.277 \\
+37 & Uni-Mol (v1) & 0.272 \\
+38 & MolBERT$^\dagger$ & 0.265 \\
+39 & ChemFM (3B) & 0.236 \\
+40 & GraphMVP (CP)$^\dagger$ & 0.212 \\
+41 & SimSon & 0.193 \\
+42 & GEM & 0.187 \\
+43 & Chemprop (3D)$^\dagger$ & 0.184 \\
+44 & SELFormer & 0.167 \\
+45 & SimSon$^\dagger$ & 0.142 \\
+46 & GROVER (large)$^\dagger$ & 0.118 \\
+47 & GraphFP (CP) & 0.102 \\
+48 & GROVER (large) & 0.095 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Cross-endpoint compound overlap}
+Note in this study, pairs of endpoints often have overlap in the compounds in their test set. We write $O_{ee'} = C_e \cap C_{e'}$ as the shared test compounds between endpoints $e, e'$, $n_{ee'}=|O_{ee'}|$, and $a_{ice} = (A_e)_{ci}$. We compute the per-compound cross-endpoint covariance as:
+\begin{equation}
+    (G_{ee'})_{ij} = \Cov_{c\in O_{ee'}}(a_{ice}, a_{jce'}).
+\end{equation}
+
+We can also compute:
+\begin{equation}
+    \Cov(\hat{y}_{ie}, \hat{y}_{je'}) = \frac{1}{n_en_{e'}}\sum_{c\in C_e}\sum_{c'\in C_{e'}} \Cov(a_{ice}, a_{jc'e'}) = \frac{n_{ee'}}{n_e n_{e'}}(G_{ee'})_{ij}
+\end{equation}
+and thus compute the correlation coefficient as:
+\begin{equation}
+    \rho_{ij,ee'} = \frac{(V_{ee'}){ij}}{\sqrt{v{ie}, v_{je'}}} = \underbrace{\frac{n_{ee'}}{\sqrt{n_e n_{e'}}}}_{\alpha_{ee'}} \cdot \underbrace{\frac{(G_{ee'}){ij}}{\sqrt{(G_e){ii}(G_{e'}){jj}}}}_{r_{ij,ee'}}.
+\end{equation}
+
+Defining $u = e_j - e_i$, we can also compute the covariance and correlation of the marginal as:
+\begin{equation}
+    \Cov(\hat{d}_{ije}, \hat{d}_{ije'}) = \frac{n_{ee'}}{n_e n_e'}u^\top G_{ee'}u, \qquad \rho_{ee'}^{(ij)} = \frac{(n_{ee'}/n_en_{e'}) u^\top G_{ee'}u}{\sqrt{(2\omega_e^2 + \frac{u^\top G_e u}{n_e})(2\omega_{e'}^2 + \frac{u^\top G_{e'}u}{n_{e'}})}}.
+\end{equation}
+Note as $\omega_e^2$ grows, this large specialization variance is what leads to overlap not mattering.
+
+\subsection{Cross-endpoint correlation}
+\label{app:endpoint-correlation}
+
+Eq.~\ref{eq:decomposition} treats $u_{ie}$ as independent across endpoints, so
+$\ell = \sum_e \ell_e$ counts each endpoint as an independent observation of
+ability. This is not a fair assumption to make without further experimentation.
+
+Relatedness between endpoints is not by itself a violation, we can compute under $\theta \sim \mathcal{N}(0,P)$:
+\begin{equation}
+  \Cov(y_{ie}, y_{ie'}) = a_e a_{e'}\left(1 - \tfrac{1}{M}\right) + \Cov(u_{ie}, u_{ie'}),
+\end{equation}
+which is nonzero even with independent specialization. Only the second term
+violates the assumption of endpoint independence.
+
+Generalize Eq.~\ref{eq:decomposition} to
+\begin{equation}
+  u_{i\cdot} \sim \mathcal{N}(0, D_\omega \Psi D_\omega), \qquad
+  D_\omega = \operatorname{diag}(\omega_1,\dots,\omega_E),
+\end{equation}
+independently across models, with $\Psi$ as an $E\times E$ correlation matrix. Note
+$\Psi = I_E$ recovers Section~\ref{sec:blam}. 
+
+From Appendix~\ref{app:margins},
+the margin vector $d_{ij\cdot}$ then has covariance $2D_\omega\Psi D_\omega$.
+Writing $\kappa_e = a_e/\omega_e$, the independent model reports
+$\Var(\hat\delta_{ij}) = 2/\|\kappa\|^2$ while the truth under $\Psi$ is
+$2\,\kappa^\top\Psi\kappa/\|\kappa\|^4$. We use the Rayleigh quotient to compute the variance inflation factor (VIF) as:
+\begin{equation}
+    \mathrm{VIF}(\Psi) = \frac{\kappa^\top\Psi\kappa}{\kappa^\top\kappa} \leq \lambda_1(\Psi),
+  \label{eq:endpoint-vif}
+\end{equation}
+where reported widths for ability contrasts are too narrow by a factor of $\sqrt{\mathrm{VIF}}$.
+
+Using posterior means from the fitted model, take $\hat\Psi$ as the correlation across
+models of
+\begin{equation}
+  z_{ie} = \frac{\hat{y}_{ie} - \hat\mu_e + \hat{a}_e\hat\theta_i}
+                {\sqrt{\hat\omega_e^2 + \bar{v}_e - \bar{c}_e}} .
+\end{equation}
+
+Note $z_{ie}$ carries both measurement error and specialization, so $\Psi$ estimates both total residual correlation and test compound overlap induced correlation.
+
+Fitting $\mu_e$ and the rank-one term induces residual correlation even when
+$\Psi = I_E$, so we calibrate $\lambda_1(\hat\Psi)$ against replicates simulated
+from the fitted independent model and passed through the identical pipeline.
+
+Positive residual correlation widens the posterior for $\delta_{ij}$, pushing
+$P(i \succ \text{ECFP})$ on an unseen endpoint toward $0.5$. The main-text
+conclusion that no representation clears $0.95$ is therefore conservative under
+this misspecification. What is exposed is the ordering in
+Table~\ref{tab:thetas}, where several adjacent gaps are smaller than a posterior
+standard deviation, and the entries marked significant in
+Table~\ref{tab:ecfp-observed}.
+
+\paragraph{Results.} On the fitted 17-endpoint, 48-embedding model, $\lambda_1(\hat\Psi) = 3.590$, giving
+$\mathrm{VIF}(\hat\Psi) = 1.177$ ($\sqrt{\mathrm{VIF}} = 1.085$) and $E_{\mathrm{eff}} = E/\mathrm{VIF} = 14.45$ out
+of $E=17$. The largest off-diagonal entry is $\max|\hat\Psi_{ee'}| = 0.756$ overall; restricted to the a priori
+related endpoint pairs it is $0.431$ for the Caco ER/Papp AB pair, $0.422$ for the mouse
+BPB/MPB/PPB protein-binding triple, and $0.019$ for the ExpansionRx/Polaris LogD pair. Calibrating against
+$100$ replicates simulated under $\Psi = I_E$ and refit through the identical pipeline gives a null $\lambda_1$
+of $2.290 \pm 0.167$ (range $[1.907, 2.989]$); none of the $100$ replicates reached the observed value, so
+$p = P(\lambda_1^{(\mathrm{rep})} \geq \lambda_1(\hat\Psi)) = 0.0099$ -- the observed correlation is a genuine
+excess, not an artifact of fitting $\mu_e$ and the rank-one term.
+
+\paragraph{Mechanism: why $\mathrm{VIF} \ll \lambda_1$.} Writing $\hat\Psi = \sum_k \lambda_k v_kv_k^\top$,
+$\kappa^\top\hat\Psi\kappa = \sum_k \lambda_k(\kappa^\top v_k)^2$, which sums to
+$\mathrm{VIF}(\hat\Psi)\|\kappa\|^2 = 44.08$. This sum is not dominated by $\lambda_1$: its term is $0.015$
+($0.03\%$ of the total), i.e. $\kappa$ is nearly orthogonal to $v_1$. The three largest terms instead come from
+mid-ranked eigenvalues -- $\lambda=0.998$ (the 6th largest, contributing $11.84$, $26.9\%$), $\lambda=2.104$
+(3rd largest, $11.42$, $25.9\%$), and $\lambda=1.803$ (4th largest, $10.36$, $23.5\%$), together $76.3\%$ of the
+total. So the direction of strongest residual correlation is nearly irrelevant to $\delta_{ij}$'s variance;
+what matters is how well $\kappa$ aligns with each eigenvector, not how large that eigenvector's eigenvalue is.
+Inverting the equicorrelated formula the other way, $\mathrm{VIF}(\hat\Psi) = 1.177$ corresponds to an implied
+$\rho = (\mathrm{VIF}-1)/(\bar w - 1) = 0.012$ -- about $20\times$ below where Table~\ref{tab:endpoint-psi-sensitivity}'s
+ladder starts, consistent with $\hat\Psi$'s correlation being real (Sec.~\ref{app:pipeline}'s PPC above) but
+concentrated in directions $\kappa$ does not load on.
+
+\paragraph{The $0.756$ pair, and compound overlap vs.\ residual correlation.} The overall maximum is the two
+Polaris antiviral-protease potency endpoints, MERS-CoV and SARS-CoV-2 Mpro pIC50 ($\alpha_{ee'}=0.940$: SARS-CoV-2's
+$258$-compound test set is almost entirely a subset of MERS-CoV's $292$). Table~\ref{tab:endpoint-psi-alpha}
+compares $\hat\Psi_{ee'}$ against $\alpha_{ee'}$ for every a priori related pair: overlap and residual
+correlation track loosely within a family (the mouse triple's ordering $\text{BPB/PPB} > \text{BPB/MPB} \approx
+\text{MPB/PPB}$ matches its $\alpha$ ordering exactly, and the ExpansionRx/Polaris LogD pair has both
+$\alpha=0$, disjoint compound libraries, and near-zero $\hat\Psi_{ee'}$), but not across families -- Caco
+ER/Papp AB has \emph{perfect} overlap ($\alpha=1$, same assay) yet lower residual correlation ($0.431$) than
+the Mpro pair ($0.756$ at $\alpha=0.940$). Compound overlap is not sufficient on its own to predict how
+strongly two endpoints' specializations correlate.
+
+\begin{table}[H]
+\centering
+\caption{$\hat\Psi_{ee'}$ vs.\ compound-overlap $\alpha_{ee'}$ (Sec.~\ref{app:pipeline}'s cross-endpoint
+compound overlap) for the a priori related pairs.}
+\label{tab:endpoint-psi-alpha}
+\begin{tabular}{lrr}
+\toprule
+Pair & $\hat\Psi_{ee'}$ & $\alpha_{ee'}$ \\
+\midrule
+MERS-CoV / SARS-CoV-2 Mpro pIC50   & 0.756 & 0.940 \\
+Caco ER / Papp AB                  & 0.431 & 1.000 \\
+Mouse BPB / PPB                    & 0.422 & 0.990 \\
+Mouse BPB / MPB                    & 0.289 & 0.678 \\
+Mouse MPB / PPB                    & 0.166 & 0.675 \\
+ExpansionRx / Polaris LogD         & 0.019 & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Is $v_1$ a pipeline artifact or chemistry?} $v_1$ does not cleanly split by data source: mean
+loading is $-0.084$ for ExpansionRx and $-0.037$ for Polaris-ADMET (both near zero, large within-group spread),
+not the clean two-cluster pattern a pure pipeline artifact would predict. Its extremes are instead the MERS-CoV/SARS-CoV-2
+Mpro pair ($+0.392$, $+0.390$ -- nearly identical, consistent with the highly-correlated pair above anchoring
+this axis) and ExpansionRx LogD/KSOL ($-0.379$, $-0.350$). $v_1$ correlates moderately with which regression
+head most often won cross-validation on that endpoint (tabicl: $r=0.52$; ridge: $r=-0.46$; $n=17$) -- suggestive
+but not conclusive at this sample size. Read together, the dominant signal looks like genuine chemistry (a
+compound-overlapping, target-family-sharing assay pair), with a weaker and harder-to-disentangle
+method-selection confound layered on top.
+
+\begin{table}[H]
+\centering
+\caption{Equicorrelated-$\Psi$ sensitivity: refitting with $\Psi = (1-\rho)I_E + \rho\mathbf{1}\mathbf{1}^\top$ at
+each $\rho$ (16 chains, $2{,}000$ warmup + $4{,}000$ samples each; see note on chain filtering below).
+$\mathrm{VIF}_{\mathrm{analytic}}(\rho) = (1-\rho) + \rho\bar w$, $\bar w = (\sum_e\kappa_e)^2/\sum_e\kappa_e^2 =
+15.92$ (Eq.~\ref{eq:endpoint-vif} specialized to equicorrelated $\Psi$); $\mathrm{VIF}_{\mathrm{emp}}(\rho)$ is
+$\Var(\hat\delta_{ij})$ at that $\rho$ relative to the $\rho=0$ refit, conditional on the dominant posterior
+mode (see below). Spearman is the rank correlation of that $\rho$'s $\theta$ against the $\rho=0$
+(Table~\ref{tab:thetas}) ranking, $\pm$ its Monte Carlo standard error (parametric perturbation of each
+$\theta_i$ by its own MCMC standard error, propagated through $2{,}000$ resamples). $\rho=1$ is the closed-form
+bound only -- no refit.}
+\label{tab:endpoint-psi-sensitivity}
+\begin{tabular}{lrrrrr}
+\toprule
+$\rho$ & $P(\text{Monroe} \succ \text{ECFP})$ & $\mathrm{VIF}_{\mathrm{emp}}$ & $\mathrm{VIF}_{\mathrm{analytic}}$ & Spearman & chains kept \\
+\midrule
+0.00           & 0.810 & 1.00 & 1.00  & $1.000 \pm 0.000$ & 16/16 \\
+0.25           & 0.699 & 0.77 & 4.73  & $0.833 \pm 0.001$ & 14/16 \\
+0.50           & 0.632 & 2.69 & 8.46  & $0.655 \pm 0.001$ & 14/16 \\
+0.75           & 0.612 & 4.49 & 12.19 & $0.445 \pm 0.001$ & 10/16 \\
+1.00 (bound)   & --    & --   & 15.92 & --                & --    \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{A genuine second posterior mode.} An earlier version of this fit sampled the equicorrelated
+extension's per-model factor $\xi_i$ ($u_{i\cdot} \sim \mathcal{N}(0, D_\omega\Psi D_\omega)$ via $u_{ie} =
+\omega_e(\sqrt{1-\rho}\,\epsilon_{ie} + \sqrt\rho\,\xi_i)$) explicitly alongside an observation covariance of
+$V_e$ alone -- dropping $\omega_e^2$'s regularizing floor (stat.\ $V_e$'s own eigenvalues run as low as
+$10^{-6}$ against $\omega_e^2\!\sim\!10^{-3}$) and producing an unusable fit ($\hat R$ up to $6.8$, effective
+sample size as low as $8/64{,}000$ draws). Marginalizing $\epsilon_{ie}$ analytically ($\Sigma_e =
+\omega_e^2(1-\rho)I + V_e$, exact, and identical to the main text's $\Sigma_e$ at $\rho=0$) and raising NUTS's
+target acceptance to $0.9$ fixes this for the large majority of chains, but a growing minority still lands in
+a second, self-consistent mode rather than merely failing to mix: at $\rho \in \{0, 0.25, 0.5, 0.75\}$,
+respectively $0/16$, $2/16$, $2/16$, and $6/16$ chains converge (zero divergences, healthy within-chain
+diagnostics) to a distinct $\hat\delta_{ij}(\text{Monroe}, \text{ECFP})$ roughly double the majority value,
+tightly clustered among themselves. This is the model finding a second explanation for Monroe's edge --
+attributing it mostly to a large draw of the \emph{shared, cross-endpoint-correlated} factor $\xi_{\text{Monroe}}$
+rather than to $\theta_{\text{Monroe}}$ -- and its growing prevalence with $\rho$ is itself evidence for the
+identifiability concern this appendix opened with. Table~\ref{tab:endpoint-psi-sensitivity} reports the
+dominant-mode summary (chains kept via pairwise correlation of per-chain $\theta$ means, threshold $0.5$; see
+\texttt{filter\_outlier\_chains} in \texttt{scripts/blam\_robustness\_checks.py}), so $\mathrm{VIF}_{\mathrm{emp}}$
+understates the total posterior uncertainty once the second mode's probability mass is accounted for, which is
+also why it does not track $\mathrm{VIF}_{\mathrm{analytic}}$ (a single-mode Gaussian-linearization quantity)
+closely at $\rho \geq 0.25$.
+
+Restricted to the dominant mode, the $\rho=0$ refit ($P=0.810$, Spearman $1.000$ against the original
+independent fit's $P=0.811$) recovers the original model essentially exactly, as expected since the
+equicorrelated construction collapses in distribution to $\Psi=I_E$ at $\rho=0$. As $\rho$ grows,
+$P(\text{Monroe}\succ\text{ECFP})$ falls monotonically toward $0.5$ ($0.810\to0.699\to0.632\to0.612$) and the
+ranking degrades monotonically and with a Monte Carlo standard error two orders of magnitude smaller than the
+signal (Spearman $1.000\to0.833\to0.655\to0.445$), confirming several adjacent gaps in Table~\ref{tab:thetas}
+are within a posterior standard deviation of each other once cross-endpoint correlation this strong is
+present -- and, combined with the growing second-mode fraction above, that the ordering itself becomes
+increasingly ambiguous, not just less precise.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \newpage
+% \input{checklist.tex}
+
+
+\end{document}

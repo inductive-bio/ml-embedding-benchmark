@@ -34,8 +34,6 @@ from collections import OrderedDict
 from datetime import datetime
 from sklearn.metrics import roc_auc_score
 
-from paddle import fluid
-
 from pahelix.utils.splitters import \
     RandomSplitter, IndexSplitter, ScaffoldSplitter, RandomScaffoldSplitter
 from pahelix.datasets import *

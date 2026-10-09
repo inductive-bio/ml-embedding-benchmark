@@ -1,0 +1,113 @@
+model:
+  backbone:
+    class_path: sand.nn.backbone.IVFPQEncoderBackbone
+    init_args:
+      emb_dim: 512
+      encoder_hidden_dim: 1024
+      encoder_num_layers: 7
+      num_pq_quantizers: 32
+      quantize_emb: True
+      num_ivf_quantizers: 1
+      ivf_codebook_size: 256
+      ivf_threshold_ema_dead_code: 0.5
+      ivf_ema_decay: 0.8
+
+  lr: 0.0005
+  min_lr: 0.00001
+  weight_decay: 0.05
+  warmup_iters: 10000
+  decay_iters: 1000000
+
+  outputs:
+    - class_path: sand.output.embedding.SpearmanROutput
+      init_args:
+        sim_key: score
+        emb_key: emb_quantized
+    - class_path: sand.output.embedding.UniformityOutput
+      init_args:
+        name: "uniformity"
+        emb_key: emb
+        loss_weight: 0.5
+        num_matches: 1
+        margin: 0.2
+    - class_path: sand.output.embedding.QuantizationOutput
+      init_args:
+        loss_weight: 0.5
+        nq_key: emb
+        q_key: ivf_x
+        name: "quantization_ivf"
+        use_cosine: True
+        add_dataloader_idx_to_name: True
+    - class_path: sand.output.embedding.QuantizationOutput
+      init_args:
+        loss_weight: 0.25
+        nq_key: x_res
+        q_key: pq_x_res
+        name: "quantization_pq"
+        use_cosine: False
+        add_dataloader_idx_to_name: True
+data:
+  class_path: sand.data.datamodule.SandDataModule
+  init_args:
+    batch_size: 1800
+    num_workers: 8
+    prefetch_factor: 2
+    persistent_workers: True
+    graph_storage_path: /path/to/graphs.zarr  # <-- set to your graphs.zarr path
+    score_storage_path: /path/to/scores.zarr  # <-- set to your scores.zarr path
+
+trainer:
+  use_distributed_sampler: False
+  accelerator: gpu
+  strategy: ddp
+  devices: 4
+  num_nodes: 1
+  precision: bf16-mixed
+  enable_progress_bar: True
+  logger:
+    class_path: lightning.pytorch.loggers.CSVLogger
+    init_args:
+      save_dir: ./logs
+      name: comp
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        save_top_k: 1
+        monitor: "val_score_r_loss"
+        mode: min
+        save_last: False
+    - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: "step"
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: "val_score_r_loss"
+        mode: min
+        patience: 60
+
+  fast_dev_run: False
+  max_epochs: 100
+  min_epochs: null
+  max_steps: -1
+  min_steps: null
+  max_time: null
+  limit_test_batches: null
+  limit_predict_batches: null
+  overfit_batches: 0.0
+  check_val_every_n_epoch: 1
+  log_every_n_steps: null
+  enable_checkpointing: null
+  enable_progress_bar: null
+  enable_model_summary: null
+  accumulate_grad_batches: 2
+  gradient_clip_val: 0.1
+  gradient_clip_algorithm: null
+  deterministic: null
+  benchmark: null
+  inference_mode: True
+  profiler: null
+  detect_anomaly: False
+  barebones: False
+  plugins: null
+  sync_batchnorm: False
+  reload_dataloaders_every_n_epochs: 0

@@ -9,7 +9,6 @@ if [ $? -ne 0 ]; then
     echo "Normal installation failed. Installing with --no-deps..."
     
     while IFS= read -r line; do
-        # Skip empty lines and comments
         if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
             continue
         fi

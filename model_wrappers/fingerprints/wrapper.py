@@ -26,7 +26,7 @@ class SKFingerprintEmbedder(SmilesEmbedder):
     
     @property
     def device_used(self):
-        return 'cpu'  # SKFP does not use GPU, so we return 'cpu'
+        return 'cpu'
 
 
 class ECFPEmbedder(SKFingerprintEmbedder):

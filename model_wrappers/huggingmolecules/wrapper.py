@@ -30,7 +30,7 @@ class HuggingMoleculesEmbedder(SmilesEmbedder):
     def process_batch(self, smiles):
         batch = self._featurizer(smiles).to(self._device)
         with torch.no_grad():
-            output = self._model(batch) # Returns Torch Tensor of shape [n_samples, dims]
+            output = self._model(batch)
         return output
     
     def safe_batch(self, smiles):

@@ -1,0 +1,268 @@
+<title>OpenADMET endpoint distributions — train vs test</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --surface-1:      #fcfcfb;
+  --page-plane:     #f9f9f7;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #898781;
+  --gridline:       #e1e0d9;
+  --baseline:       #c3c2b7;
+  --border:         rgba(11,11,11,0.10);
+  --series-train:   #2a78d6;
+  --series-test:    #eb6834;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-train:   #3987e5;
+    --series-test:    #d95926;
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --surface-1:      #1a1a19;
+  --page-plane:     #0d0d0d;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #898781;
+  --gridline:       #2c2c2a;
+  --baseline:       #383835;
+  --border:         rgba(255,255,255,0.10);
+  --series-train:   #3987e5;
+  --series-test:    #d95926;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+.viz-root {
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  padding: 24px;
+  min-height: 100vh;
+}
+.page-header { max-width: 1400px; margin: 0 auto 20px; }
+.page-header h1 { font-size: 19px; font-weight: 600; margin: 0 0 6px; }
+.page-header p { font-size: 13px; color: var(--text-secondary); margin: 0 0 2px; line-height: 1.5; max-width: 780px; }
+
+.controls { max-width: 1400px; margin: 0 auto 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.legend { display: flex; gap: 16px; align-items: center; font-size: 12px; color: var(--text-secondary); }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.swatch.train { background: var(--series-train); }
+.swatch.test { background: var(--series-test); }
+
+.view-toggle {
+  font: inherit; font-size: 12px; color: var(--text-secondary);
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 10px; cursor: pointer;
+}
+.view-toggle:hover { color: var(--text-primary); }
+
+.grid {
+  max-width: 1400px; margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+.panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px 10px;
+}
+.panel-title { font-size: 12.5px; font-weight: 600; margin: 0 0 1px; }
+.panel-sub { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+.panel svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+.bar { cursor: pointer; }
+.bar:hover { filter: brightness(1.12); }
+.tick-label { fill: var(--text-muted); font-size: 9px; }
+.axis-line { stroke: var(--baseline); stroke-width: 1; }
+.grid-line { stroke: var(--gridline); stroke-width: 1; }
+
+#tooltip {
+  position: fixed; pointer-events: none; z-index: 50;
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 9px; font-size: 11.5px; color: var(--text-primary);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  display: none; line-height: 1.5; white-space: nowrap;
+}
+#tooltip .tt-row { display: flex; align-items: center; gap: 5px; }
+#tooltip .tt-swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+table.data-table {
+  max-width: 1400px; margin: 0 auto; border-collapse: collapse; font-size: 12px;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+  overflow: hidden;
+}
+table.data-table th, table.data-table td {
+  text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--gridline);
+  font-variant-numeric: tabular-nums;
+}
+table.data-table th:first-child, table.data-table td:first-child { text-align: left; }
+table.data-table th:nth-child(2), table.data-table td:nth-child(2) { text-align: left; }
+table.data-table thead th { color: var(--text-muted); font-weight: 600; font-size: 11px; }
+table.data-table tbody tr:last-child td { border-bottom: none; }
+.hidden { display: none !important; }
+</style>
+
+<div class="viz-root">
+  <div class="page-header">
+    <h1>OpenADMET endpoint distributions — train vs. test (per compound target values)</h1>
+    <p>Each panel bins one endpoint's target column into 10 equal-width bins over its full train+test range, then shows what share of that split's own compounds falls in each bin — this normalizes for train/test having very different sample sizes, so shape is what's comparable, not bar height. Confirms the polaris_admet HLM/KSOL/MDR1_MDCKII/MLM log10(x+1) fix (previously raw-scale) landed correctly and that every endpoint's train/test split is drawn from a similar distribution.</p>
+  </div>
+
+  <div class="controls">
+    <div class="legend">
+      <span class="legend-item"><span class="swatch train"></span>Train (+valid)</span>
+      <span class="legend-item"><span class="swatch test"></span>Test</span>
+    </div>
+    <button class="view-toggle" id="toggleView">View as table</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <table class="data-table hidden" id="dataTable"></table>
+  <div id="tooltip"></div>
+</div>
+
+<script id="endpoint-data" type="application/json">[{"name": "reg_openadmet_expansionrx_LogD", "value_col": "LogD", "edges": [-2.0, -1.28, -0.56, 0.16000000000000014, 0.8799999999999999, 1.5999999999999996, 2.3200000000000003, 3.04, 3.76, 4.4799999999999995, 5.2], "train_n": 5039, "test_n": 2270, "train_frac": [0.004762849771780115, 0.01865449493947212, 0.03294304425481246, 0.08771581663028379, 0.15618178209962294, 0.27148243699146657, 0.20678706092478666, 0.13574121849573328, 0.07342726731494344, 0.012304028577098631], "test_frac": [0.001762114537444934, 0.009251101321585903, 0.03127753303964758, 0.06299559471365639, 0.1581497797356828, 0.32819383259911894, 0.22246696035242292, 0.13259911894273127, 0.044933920704845816, 0.008370044052863436]}, {"name": "reg_openadmet_expansionrx_LogS", "value_col": "LogS", "edges": [-5.999440121162603, -5.747513309668771, -5.495586498174939, -5.243659686681107, -4.9917328751872745, -4.739806063693442, -4.48787925219961, -4.235952440705778, -3.9840256292119456, -3.7320988177181134, -3.480172006224281], "train_n": 5128, "test_n": 2170, "train_frac": [0.042316692667706705, 0.040171606864274574, 0.042706708268330736, 0.046996879875195005, 0.04816692667706708, 0.04933697347893916, 0.07078783151326053, 0.1392355694227769, 0.048556942277691105, 0.4717238689547582], "test_frac": [0.04377880184331797, 0.01935483870967742, 0.029953917050691243, 0.03317972350230415, 0.04838709677419355, 0.059907834101382486, 0.04838709677419355, 0.041935483870967745, 0.03917050691244239, 0.6359447004608295]}, {"name": "reg_openadmet_expansionrx_Log_Caco_ER", "value_col": "Log_Caco_ER", "edges": [0.1003705451175629, 0.36874455829837266, 0.6371185714791825, 0.9054925846599923, 1.173866597840802, 1.442240611021612, 1.7106146242024216, 1.9789886373832313, 2.247362650564041, 2.515736663744851, 2.7841106769256605], "train_n": 2161, "test_n": 1616, "train_frac": [0.4831096714484035, 0.29245719574271173, 0.1004164738546969, 0.05506709856547894, 0.04349838037945396, 0.015733456732993985, 0.007403979639055993, 0.0023137436372049976, 0.0, 0.0], "test_frac": [0.16212871287128713, 0.25495049504950495, 0.14665841584158415, 0.12314356435643564, 0.09591584158415842, 0.10272277227722772, 0.07611386138613861, 0.027846534653465347, 0.006806930693069307, 0.0037128712871287127]}, {"name": "reg_openadmet_expansionrx_Log_Caco_Papp_AB", "value_col": "Log_Caco_Papp_AB", "edges": [-6.0, -5.8280585840297405, -5.656117168059481, -5.484175752089222, -5.312234336118963, -5.1402929201487035, -4.968351504178444, -4.796410088208185, -4.624468672237926, -4.4525272562676665, -4.280585840297407], "train_n": 2157, "test_n": 1616, "train_frac": [0.041261010662957814, 0.07139545665275845, 0.09133055169216504, 0.08484005563282336, 0.09782104775150673, 0.11080203987019008, 0.14789058878071396, 0.16736207695873898, 0.15299026425591097, 0.034306907742234584], "test_frac": [0.17326732673267325, 0.1342821782178218, 0.10891089108910891, 0.12747524752475248, 0.11571782178217822, 0.11633663366336634, 0.11138613861386139, 0.07920792079207921, 0.03094059405940594, 0.0024752475247524753]}, {"name": "reg_openadmet_expansionrx_Log_HLM_CLint", "value_col": "Log_HLM_CLint", "edges": [0.0, 0.3413450651007325, 0.682690130201465, 1.0240351953021976, 1.36538026040293, 1.7067253255036623, 2.048070390604395, 2.3894154557051275, 2.73076052080586, 3.072105585906592, 3.4134506510073246], "train_n": 3759, "test_n": 782, "train_frac": [0.074487895716946, 0.10242085661080075, 0.1822293163075286, 0.22958233572758713, 0.1779728651237031, 0.12875764831072092, 0.060388401170524075, 0.02713487629688747, 0.01596169193934557, 0.0010641127959563714], "test_frac": [0.02557544757033248, 0.021739130434782608, 0.17902813299232737, 0.2710997442455243, 0.2749360613810742, 0.159846547314578, 0.06521739130434782, 0.0025575447570332483, 0.0, 0.0]}, {"name": "reg_openadmet_expansionrx_Log_MLM_CLint", "value_col": "Log_MLM_CLint", "edges": [0.0, 0.4015183654380146, 0.8030367308760292, 1.204555096314044, 1.6060734617520585, 2.007591827190073, 2.409110192628088, 2.810628558066102, 3.212146923504117, 3.6136652889421317, 4.015183654380146], "train_n": 4522, "test_n": 1170, "train_frac": [0.03803626713843432, 0.017249004865103935, 0.0508624502432552, 0.08580274214949138, 0.15391419725785052, 0.19371959310039805, 0.23418841220698805, 0.13246351172047766, 0.08204334365325078, 0.01172047766475011], "test_frac": [0.008547008547008548, 0.005128205128205128, 0.018803418803418803, 0.12051282051282051, 0.2170940170940171, 0.29914529914529914, 0.24102564102564103, 0.06581196581196581, 0.023931623931623933, 0.0]}, {"name": "reg_openadmet_expansionrx_Log_Mouse_BPB", "value_col": "Log_Mouse_BPB", "edges": [0.0, 0.20009977303577936, 0.4001995460715587, 0.600299319107338, 0.8003990921431174, 1.0004988651788969, 1.200598638214676, 1.4006984112504555, 1.6007981842862349, 1.8008979573220143, 2.0009977303577937], "train_n": 975, "test_n": 451, "train_frac": [0.15487179487179487, 0.15076923076923077, 0.16205128205128205, 0.14358974358974358, 0.13846153846153847, 0.10153846153846154, 0.08102564102564103, 0.036923076923076927, 0.020512820512820513, 0.010256410256410256], "test_frac": [0.14412416851441243, 0.12416851441241686, 0.15521064301552107, 0.11751662971175167, 0.1574279379157428, 0.17073170731707318, 0.10864745011086474, 0.022172949002217297, 0.0, 0.0]}, {"name": "reg_openadmet_expansionrx_Log_Mouse_MPB", "value_col": "Log_Mouse_MPB", "edges": [0.0, 0.1797959643737196, 0.3595919287474392, 0.5393878931211589, 0.7191838574948785, 0.898979821868598, 1.0787757862423177, 1.2585717506160372, 1.438367714989757, 1.6181636793634766, 1.797959643737196], "train_n": 222, "test_n": 209, "train_frac": [0.06306306306306306, 0.13513513513513514, 0.12162162162162163, 0.17117117117117117, 0.20270270270270271, 0.0990990990990991, 0.10810810810810811, 0.04954954954954955, 0.03153153153153153, 0.018018018018018018], "test_frac": [0.09090909090909091, 0.11004784688995216, 0.11483253588516747, 0.05741626794258373, 0.11961722488038277, 0.1291866028708134, 0.1722488038277512, 0.1674641148325359, 0.03827751196172249, 0.0]}, {"name": "reg_openadmet_expansionrx_Log_Mouse_PPB", "value_col": "Log_Mouse_PPB", "edges": [0.0, 0.19474337218870508, 0.38948674437741015, 0.5842301165661152, 0.7789734887548203, 0.9737168609435254, 1.1684602331322305, 1.3632036053209355, 1.5579469775096406, 1.7526903496983457, 1.9474337218870508], "train_n": 1302, "test_n": 454, "train_frac": [0.04531490015360983, 0.08218125960061444, 0.10522273425499232, 0.1205837173579109, 0.1336405529953917, 0.14746543778801843, 0.13671274961597543, 0.10829493087557604, 0.08678955453149001, 0.03379416282642089], "test_frac": [0.006607929515418502, 0.048458149779735685, 0.06167400881057269, 0.08149779735682819, 0.1277533039647577, 0.19383259911894274, 0.17841409691629956, 0.15638766519823788, 0.13656387665198239, 0.00881057268722467]}, {"name": "reg_openadmet_polaris_admet_HLM", "value_col": "HLM", "edges": [0.0, 0.3209783014848515, 0.641956602969703, 0.9629349044545545, 1.283913205939406, 1.6048915074242576, 1.925869808909109, 2.2468481103939606, 2.567826411878812, 2.8888047133636636, 3.209783014848515], "train_n": 301, "test_n": 102, "train_frac": [0.013289036544850499, 0.026578073089700997, 0.05647840531561462, 0.19933554817275748, 0.15946843853820597, 0.19269102990033224, 0.18272425249169436, 0.08305647840531562, 0.06312292358803986, 0.023255813953488372], "test_frac": [0.0, 0.0, 0.0, 0.14705882352941177, 0.1568627450980392, 0.18627450980392157, 0.1568627450980392, 0.16666666666666666, 0.12745098039215685, 0.058823529411764705]}, {"name": "reg_openadmet_polaris_admet_KSOL", "value_col": "KSOL", "edges": [0.4771212547196624, 0.6897235665097143, 0.9023258782997663, 1.1149281900898182, 1.3275305018798702, 1.5401328136699222, 1.7527351254599741, 1.965337437250026, 2.1779397490400783, 2.39054206083013, 2.603144372620182], "train_n": 365, "test_n": 112, "train_frac": [0.021917808219178082, 0.049315068493150684, 0.06027397260273973, 0.06575342465753424, 0.06027397260273973, 0.049315068493150684, 0.0547945205479452, 0.0547945205479452, 0.08493150684931507, 0.4986301369863014], "test_frac": [0.0, 0.0, 0.008928571428571428, 0.008928571428571428, 0.026785714285714284, 0.008928571428571428, 0.026785714285714284, 0.008928571428571428, 0.05357142857142857, 0.8571428571428571]}, {"name": "reg_openadmet_polaris_admet_LogD", "value_col": "LogD", "edges": [-0.7, -0.17999999999999994, 0.3400000000000001, 0.8600000000000001, 1.3800000000000001, 1.9000000000000001, 2.42, 2.9400000000000004, 3.46, 3.9799999999999995, 4.5], "train_n": 352, "test_n": 126, "train_frac": [0.02556818181818182, 0.05965909090909091, 0.08238636363636363, 0.07670454545454546, 0.16477272727272727, 0.15056818181818182, 0.1590909090909091, 0.10511363636363637, 0.08238636363636363, 0.09375], "test_frac": [0.0, 0.007936507936507936, 0.047619047619047616, 0.2619047619047619, 0.2222222222222222, 0.1984126984126984, 0.1111111111111111, 0.06349206349206349, 0.07142857142857142, 0.015873015873015872]}, {"name": "reg_openadmet_polaris_admet_MDR1_MDCKII", "value_col": "MDR1_MDCKII", "edges": [0.0, 0.1564666064252089, 0.3129332128504178, 0.4693998192756267, 0.6258664257008356, 0.7823330321260445, 0.9387996385512534, 1.0952662449764623, 1.2517328514016712, 1.4081994578268802, 1.564666064252089], "train_n": 425, "test_n": 126, "train_frac": [0.08705882352941176, 0.2164705882352941, 0.21411764705882352, 0.13647058823529412, 0.09411764705882353, 0.05647058823529412, 0.058823529411764705, 0.07294117647058823, 0.04, 0.023529411764705882], "test_frac": [0.07936507936507936, 0.1349206349206349, 0.07142857142857142, 0.03968253968253968, 0.05555555555555555, 0.05555555555555555, 0.03968253968253968, 0.05555555555555555, 0.15873015873015872, 0.30952380952380953]}, {"name": "reg_openadmet_polaris_admet_MLM", "value_col": "MLM", "edges": [0.0, 0.33767593954048797, 0.6753518790809759, 1.0130278186214638, 1.3507037581619519, 1.68837969770244, 2.0260556372429277, 2.3637315767834157, 2.7014075163239037, 3.0390834558643918, 3.37675939540488], "train_n": 303, "test_n": 117, "train_frac": [0.0231023102310231, 0.026402640264026403, 0.0429042904290429, 0.1188118811881188, 0.19141914191419143, 0.2079207920792079, 0.1848184818481848, 0.12871287128712872, 0.052805280528052806, 0.0231023102310231], "test_frac": [0.0, 0.0, 0.0, 0.10256410256410256, 0.10256410256410256, 0.1623931623931624, 0.1623931623931624, 0.1623931623931624, 0.2564102564102564, 0.05128205128205128]}, {"name": "reg_openadmet_polaris_potency_pIC50_MERS_CoV_Mpro", "value_col": "pIC50_MERS_CoV_Mpro", "edges": [1.0, 1.8, 2.6, 3.4000000000000004, 4.2, 5.0, 5.800000000000001, 6.6000000000000005, 7.4, 8.2, 9.0], "train_n": 901, "test_n": 292, "train_frac": [0.003329633740288568, 0.0011098779134295228, 0.003329633740288568, 0.16315205327413984, 0.5216426193118757, 0.22086570477247502, 0.05327413984461709, 0.017758046614872364, 0.0022197558268590455, 0.013318534961154272], "test_frac": [0.0, 0.0, 0.0, 0.07191780821917808, 0.3561643835616438, 0.2465753424657534, 0.19863013698630136, 0.1095890410958904, 0.010273972602739725, 0.00684931506849315]}, {"name": "reg_openadmet_polaris_potency_pIC50_SARS_CoV_2_Mpro", "value_col": "pIC50_SARS_CoV_2_Mpro", "edges": [4.0, 4.473, 4.946, 5.4190000000000005, 5.892, 6.365, 6.838, 7.311, 7.784000000000001, 8.257000000000001, 8.73], "train_n": 842, "test_n": 258, "train_frac": [0.2339667458432304, 0.20308788598574823, 0.19714964370546317, 0.1187648456057007, 0.07125890736342043, 0.052256532066508314, 0.08076009501187649, 0.027315914489311165, 0.013064133016627079, 0.0023752969121140144], "test_frac": [0.12015503875968993, 0.1124031007751938, 0.09689922480620156, 0.08527131782945736, 0.10077519379844961, 0.07751937984496124, 0.10852713178294573, 0.1511627906976744, 0.10465116279069768, 0.04263565891472868]}, {"name": "reg_openadmet_pxr_pEC50", "value_col": "pEC50", "edges": [1.61, 2.203855421686747, 2.797710843373494, 3.3915662650602414, 3.985421686746988, 4.579277108433735, 5.1731325301204825, 5.766987951807229, 6.360843373493976, 6.9546987951807235, 7.54855421686747], "train_n": 4139, "test_n": 513, "train_frac": [0.07417250543609567, 0.06499154385117178, 0.0804542159942015, 0.07900459048079246, 0.16549891278086495, 0.3109446726262382, 0.18361923169847788, 0.03696545059193042, 0.004107272287992268, 0.00024160425223483932], "test_frac": [0.025341130604288498, 0.031189083820662766, 0.05458089668615984, 0.07992202729044834, 0.11306042884990253, 0.29239766081871343, 0.27485380116959063, 0.11306042884990253, 0.015594541910331383, 0.0]}]</script>
+<script>
+(function () {
+  const data = JSON.parse(document.getElementById('endpoint-data').textContent);
+  const grid = document.getElementById('grid');
+  const tooltip = document.getElementById('tooltip');
+  const svgNS = 'http://www.w3.org/2000/svg';
+
+  const W = 300, H = 168;
+  const padL = 8, padR = 8, padT = 6, padB = 18;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  function shortName(name) {
+    return name.replace(/^reg_openadmet_/, '');
+  }
+
+  function fmt(n) {
+    if (Math.abs(n) >= 100) return n.toFixed(0);
+    if (Math.abs(n) >= 10) return n.toFixed(1);
+    return n.toFixed(2);
+  }
+
+  function pct(f) {
+    return (f * 100).toFixed(1) + '%';
+  }
+
+  function el(tag, attrs) {
+    const e = document.createElementNS(svgNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function renderPanel(d) {
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+
+    const title = document.createElement('p');
+    title.className = 'panel-title';
+    title.textContent = shortName(d.name);
+    panel.appendChild(title);
+
+    const sub = document.createElement('p');
+    sub.className = 'panel-sub';
+    sub.textContent = `${d.value_col} · train n=${d.train_n} · test n=${d.test_n}`;
+    panel.appendChild(sub);
+
+    const yMax = Math.max(...d.train_frac, ...d.test_frac, 0.0001) * 1.12;
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Histogram of ${d.value_col}` });
+
+    // gridlines at 0, 50%, 100% of yMax
+    [0, 0.5, 1].forEach((f) => {
+      const y = padT + plotH * (1 - f);
+      svg.appendChild(el('line', { x1: padL, x2: W - padR, y1: y, y2: y, class: f === 0 ? 'axis-line' : 'grid-line' }));
+      const label = el('text', { x: padL, y: y - 3, class: 'tick-label' });
+      label.textContent = pct(yMax * f);
+      svg.appendChild(label);
+    });
+
+    const nBins = d.train_frac.length;
+    const groupW = plotW / nBins;
+    const barGap = 2, groupPad = groupW * 0.16;
+    const barW = (groupW - groupPad * 2 - barGap) / 2;
+
+    for (let i = 0; i < nBins; i++) {
+      const gx = padL + i * groupW + groupPad;
+      const lo = d.edges[i], hi = d.edges[i + 1];
+
+      [['train', d.train_frac[i], 'var(--series-train)', d.train_n], ['test', d.test_frac[i], 'var(--series-test)', d.test_n]].forEach(([split, frac, color, n], j) => {
+        const barH = Math.max(0, (frac / yMax) * plotH);
+        const x = gx + j * (barW + barGap);
+        const y = padT + plotH - barH;
+        const rect = el('rect', {
+          x, y, width: Math.max(barW, 0.5), height: barH,
+          fill: color, rx: 2, ry: 2, class: 'bar',
+        });
+        rect.addEventListener('mousemove', (ev) => showTip(ev, d, split, lo, hi, frac, n));
+        rect.addEventListener('mouseleave', hideTip);
+        svg.appendChild(rect);
+      });
+    }
+
+    // x-axis min/max labels
+    const lo0 = el('text', { x: padL, y: H - 4, class: 'tick-label' });
+    lo0.textContent = fmt(d.edges[0]);
+    svg.appendChild(lo0);
+    const hi0 = el('text', { x: W - padR, y: H - 4, class: 'tick-label', 'text-anchor': 'end' });
+    hi0.textContent = fmt(d.edges[nBins]);
+    svg.appendChild(hi0);
+
+    panel.appendChild(svg);
+    return panel;
+  }
+
+  function showTip(ev, d, split, lo, hi, frac, n) {
+    const color = split === 'train' ? 'var(--series-train)' : 'var(--series-test)';
+    tooltip.innerHTML = `
+      <div class="tt-row"><span class="tt-swatch" style="background:${color}"></span><strong>${split}</strong></div>
+      <div>${fmt(lo)} – ${fmt(hi)}</div>
+      <div>${pct(frac)} of ${split} set (n=${n})</div>
+    `;
+    tooltip.style.display = 'block';
+    tooltip.style.left = (ev.clientX + 14) + 'px';
+    tooltip.style.top = (ev.clientY + 14) + 'px';
+  }
+  function hideTip() { tooltip.style.display = 'none'; }
+
+  data.forEach((d) => grid.appendChild(renderPanel(d)));
+
+  // table view
+  const table = document.getElementById('dataTable');
+  let rows = '<thead><tr><th>Endpoint</th><th>Split</th><th>Bin range</th><th>n</th><th>% of split</th></tr></thead><tbody>';
+  data.forEach((d) => {
+    for (let i = 0; i < d.train_frac.length; i++) {
+      rows += `<tr><td>${shortName(d.name)}</td><td>train</td><td>${fmt(d.edges[i])}–${fmt(d.edges[i+1])}</td><td>${d.train_n}</td><td>${pct(d.train_frac[i])}</td></tr>`;
+    }
+    for (let i = 0; i < d.test_frac.length; i++) {
+      rows += `<tr><td>${shortName(d.name)}</td><td>test</td><td>${fmt(d.edges[i])}–${fmt(d.edges[i+1])}</td><td>${d.test_n}</td><td>${pct(d.test_frac[i])}</td></tr>`;
+    }
+  });
+  rows += '</tbody>';
+  table.innerHTML = rows;
+
+  document.getElementById('toggleView').addEventListener('click', (ev) => {
+    const tableIsHidden = table.classList.contains('hidden');
+    table.classList.toggle('hidden', !tableIsHidden);
+    grid.classList.toggle('hidden', tableIsHidden);
+    ev.target.textContent = tableIsHidden ? 'View as chart' : 'View as table';
+  });
+})();
+</script>

@@ -68,7 +68,7 @@ def save_endpoint(df, source, endpoint_name, id_col, smiles_col, value_col, spli
 # (log_scale, multiplier, short_name) — mirrors the official tutorial's conversion table
 EXPANSIONRX_CONVERSION = {
     "LogD": (False, 1, "LogD"),
-    "KSOL": (True, 1e-6, "LogS"),
+    "KSOL": (True, 1e-6, "KSOL"),
     "HLM CLint": (True, 1, "Log_HLM_CLint"),
     "MLM CLint": (True, 1, "Log_MLM_CLint"),
     "Caco-2 Permeability Papp A>B": (True, 1e-6, "Log_Caco_Papp_AB"),
@@ -153,13 +153,17 @@ def fetch_polaris():
     for col in ["HLM", "KSOL", "LogD", "MDR1-MDCKII", "MLM"]:
         bad = admet_excl.get(col, set())
         df = admet_df.copy()
+        if col != "LogD":
+            # Match the official evaluation's clip_and_log_transform (every ADMET
+            # target except LogD, which is already log-scale) -- see
+            # docs/data_sources/polaris_antiviral.md §5.
+            df[col] = np.log10(df[col] + 1)
         if bad:
             # Exclusions were curated against the *test*-set array of the original
             # blind competition. Canonicalizing away CXSMILES enhanced-stereo groups
             # can make a flagged compound's plain SMILES collide with an unrelated
-            # train-set row (different Molecule Name, different stereoisomer/batch,
-            # different measured value) -- restrict the mask to Set == "Test" so we
-            # only drop the actually-flagged datapoints, not collateral matches.
+            # train-set row (different Molecule Name/stereoisomer/batch/value) --
+            # restrict to Set == "Test" so only the actually-flagged datapoints drop.
             before = df[col].notna().sum()
             mask = df["_smiles_canon"].isin(bad) & (df["Set"] == "Test")
             df.loc[mask, col] = np.nan

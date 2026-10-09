@@ -31,7 +31,7 @@ class MolREmbedder(SmilesEmbedder):
     
     @property
     def device_used(self):
-        return "cpu"  # Mol-R does not use GPU, so we return "cpu"
+        return "cpu"
     
 
 def get_embedder(name, **_kwargs):

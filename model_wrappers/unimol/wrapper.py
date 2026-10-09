@@ -14,7 +14,7 @@ def _extract_cls_repr(unimol_repr) -> np.ndarray:
     # per-molecule arrays in the currently-installed unimol_tools version,
     # not the dict-with-"cls_repr"-key shape older code (and this library's
     # own docstring for return_atomic_reprs=True) implies -- handle both so
-    # a future unimol_tools upgrade that reintroduces the dict shape doesn't
+    # a future unimol_tools upgrade reintroducing the dict shape doesn't
     # silently break this again.
     if isinstance(unimol_repr, dict):
         return np.array(unimol_repr["cls_repr"])
@@ -30,7 +30,7 @@ class UniMolWrapper(SmilesEmbedder):
         self._model = UniMolRepr(model_name=model_name, use_gpu=use_cuda, use_cuda=use_cuda)
         # Determined via a throwaway call rather than left None until the
         # first real batch succeeds -- safe_batch's NaN-fallback path needs
-        # this even if the very first molecule it ever sees fails.
+        # this dim even if the very first molecule it sees fails.
         self._output_dim = _extract_cls_repr(self._model.get_repr(["C"], return_atomic_reprs=False)).shape[1]
 
     def forward_batch(self, smiles_batch):
@@ -70,13 +70,7 @@ class UniMolWrapper(SmilesEmbedder):
             data.append(self.safe_batch(b))
         repr_obj = np.concatenate(data, axis=0)
         return repr_obj
-        # log.warning(type(smiles))
-        # if not isinstance(smiles, list):
-        #     smiles = smiles.tolist()
-        # unimol_repr = self._model.get_repr(smiles, return_atomic_reprs=False)
-        # repr_obj = np.array(unimol_repr["cls_repr"])
-        # return repr_obj
-    
+
     @property
     def name(self):
         return self._model_name
