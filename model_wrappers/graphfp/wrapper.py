@@ -28,7 +28,7 @@ class GraphFPWrapper(SmilesEmbedder):
             if 'gnn' in check_point
             else check_point['mol_gnn']
         )
-        self._model = model.gnn
+        self._model = model.gnn.eval()
         self._emb_dim = 300
 
     def _forward_step(self, smile):
@@ -46,6 +46,7 @@ class GraphFPWrapper(SmilesEmbedder):
             print(f"Error processing SMILES '{smile}': {e}")
             return torch.tensor([float('nan')] * self._emb_dim)
 
+    @torch.no_grad()
     def forward(self, smiles):
         emb = torch.stack([self.safe_forward_step(smile) for smile in smiles])
         return emb.detach().cpu().numpy()
