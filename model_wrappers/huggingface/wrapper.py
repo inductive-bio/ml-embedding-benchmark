@@ -11,7 +11,7 @@ from src.common.utils import get_device, batch
 from src.common.types import SmilesEmbedder
 from abc import ABC
 from typing import Optional
-from transformers import AutoModel, AutoTokenizer, RobertaConfig, RobertaTokenizer, RobertaModel
+from transformers import AutoModel, AutoTokenizer, RobertaConfig, RobertaTokenizerFast, RobertaModel
 from joblib import Parallel, delayed
 import multiprocessing
 from sentence_transformers import SentenceTransformer
@@ -115,7 +115,8 @@ class SELFormerEmbedder(HuggingFaceSmilesEmbedder):
         model_path = join(get_original_cwd(), "model_wrappers/huggingface/model_weights", model_path)
         config = RobertaConfig.from_pretrained(model_path)
         config.output_hidden_states = True
-        self._tokenizer = RobertaTokenizer.from_pretrained(join(get_original_cwd(), "model_wrappers/huggingface/selformer_repo/data/RobertaFastTokenizer"))
+        # Pretraining tokenizer; selformer_repo/data/RobertaFastTokenizer has different token ids.
+        self._tokenizer = RobertaTokenizerFast.from_pretrained(model_path)
         self._model = RobertaModel.from_pretrained(model_path, config=config).to(self._device)
         self._joblib_backend = Parallel(n_jobs=multiprocessing.cpu_count())
         
