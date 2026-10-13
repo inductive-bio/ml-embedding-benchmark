@@ -31,6 +31,7 @@ class GEMEmbedder(SmilesEmbedder):
 
         self.compound_encoder = GeoGNNModel(compound_encoder_config)
         self.compound_encoder.set_state_dict(paddle.load(model_path))
+        self.compound_encoder.eval()
         self._dim = self.compound_encoder.graph_dim
         self.norm = nn.LayerNorm(self.compound_encoder.graph_dim)
 
