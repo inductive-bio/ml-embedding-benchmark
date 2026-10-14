@@ -6,7 +6,23 @@ import logging as log
 from src.common.types import SmilesEmbedder
 from src.common.utils import get_device, batch
 from unimol_tools.predictor import UniMolRepr
+from unimol_tools.models.unimolv2 import UniMolV2Model
 
+
+_v2_batch_collate_fn = UniMolV2Model.batch_collate_fn
+
+
+def _v2_batch_collate_fn_masked(self, samples):
+    # unimol_tools (<=0.1.6) pads attn_bias, which v2 uses as the attention
+    # mask, with 0, so padded atoms are attended to and embeddings depend on
+    # batch-mates. Upstream Uni-Mol2 pads key positions with -inf.
+    batch, label = _v2_batch_collate_fn(self, samples)
+    pad = torch.nn.functional.pad(batch["atom_mask"] == 0, (1, 0))  # column 0 is CLS
+    batch["attn_bias"] = batch["attn_bias"].masked_fill(pad[:, None, :], float("-inf"))
+    return batch, label
+
+
+UniMolV2Model.batch_collate_fn = _v2_batch_collate_fn_masked
 
 
 def _extract_cls_repr(unimol_repr) -> np.ndarray:
