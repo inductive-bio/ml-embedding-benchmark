@@ -41,6 +41,8 @@ def smiles_to_selfies(smiles):
 class HuggingFaceSmilesEmbedder(SmilesEmbedder, ABC):
     MODEL_PATH = None
     BATCH_MODE = True
+    MODEL_KWARGS = {}
+    REVISION = None
     
     def __init__(self, batch_size: int = 128, model_path: Optional[str] = None, device: Optional[str] = None, init_models: bool = True):
         if model_path is None:
@@ -48,8 +50,8 @@ class HuggingFaceSmilesEmbedder(SmilesEmbedder, ABC):
         self._device = get_device(device)
         self._model_name = model_path.split("/")[-1]
         if init_models:
-            self._model = AutoModel.from_pretrained(model_path, trust_remote_code=True).to(self._device)
-            self._tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+            self._model = AutoModel.from_pretrained(model_path, trust_remote_code=True, revision=self.REVISION, **self.MODEL_KWARGS).to(self._device)
+            self._tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, revision=self.REVISION)
         else:
             self._model = None
             self._tokenizer = None
@@ -86,6 +88,11 @@ class HuggingFaceSmilesEmbedder(SmilesEmbedder, ABC):
 
 class MolFormerEmbedder(HuggingFaceSmilesEmbedder):
     MODEL_PATH = "ibm/MoLFormer-XL-both-10pct"
+    # Without this the linear-attention random projection is redrawn on every forward call.
+    MODEL_KWARGS = {"deterministic_eval": True}
+    # "Fix tokenizer (#8)". The previous revision's tokenizer, under transformers 5,
+    # reduces multi-character tokens such as [nH], [C@@H] and Cl to their first character.
+    REVISION = "361063d0ad524ef77cf39b08469f6be770dc550f"
 
     def _model_batch(self, batch):
         return self._model(**self._tokenizer(batch, return_tensors="pt", padding=True).to(self._device)).pooler_output
