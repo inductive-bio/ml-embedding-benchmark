@@ -208,7 +208,9 @@ class Chemformer:
         for b_idx, batch in enumerate(dataloader):
             batch = self.on_device(batch)
             batch_embeddings = self.model.forward(batch)["model_output"].permute(1, 0, 2)
-            embeddings.append(batch_embeddings.mean(dim=1))
+            # Exclude padding so an embedding does not depend on the other molecules in its batch.
+            keep = (~batch["decoder_pad_mask"]).transpose(0, 1).unsqueeze(-1).to(batch_embeddings.dtype)
+            embeddings.append((batch_embeddings * keep).sum(dim=1) / keep.sum(dim=1))
         return torch.cat(embeddings, dim=0)
 
     def decode(
@@ -517,7 +519,9 @@ class Chemformer:
         for b_idx, batch in enumerate(dataloader):
             batch = self.on_device(batch)
             batch_embeddings = self.model.forward(batch)["model_output"].permute(1, 0, 2)
-            embeddings.append(batch_embeddings.mean(dim=1))
+            # Exclude padding so an embedding does not depend on the other molecules in its batch.
+            keep = (~batch["decoder_pad_mask"]).transpose(0, 1).unsqueeze(-1).to(batch_embeddings.dtype)
+            embeddings.append((batch_embeddings * keep).sum(dim=1) / keep.sum(dim=1))
         return torch.cat(embeddings, dim=0)
 
     @torch.no_grad()
