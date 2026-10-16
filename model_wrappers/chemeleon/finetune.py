@@ -35,7 +35,7 @@ from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, build_dataloader
 from chemprop.models.model import MPNN
-from chemprop.nn import BondMessagePassing, MeanAggregation, RegressionFFN
+from chemprop.nn import BondMessagePassing, MeanAggregation, RegressionFFN, UnscaleTransform
 
 log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -52,12 +52,12 @@ _VARIANTS = {
     "chemeleon_geomdrugs_both_boltzmann": "chemeleon_geomdrugs_both_boltzmann.ckpt",
 }
 
-# Starting hyperparameters ported from ensemble-aware-admet's own
-# configs/chemeleon_3d_rx.yaml -- not tuned here, see
-# docs/e2e_chemprop_chemeleon_plan.md. No mpnn_* keys: the encoder comes from
-# the pretrained checkpoint, not rebuilt from scratch.
+# Matches the CheMeleon authors' fine-tuning script
+# (JacksonBurns/chemeleon models/chemprop_mpnn/evaluate.py): RegressionFFN
+# with hidden_dim=256 and otherwise chemprop defaults, MPNN's default LR
+# schedule. No mpnn_* keys: the encoder comes from the pretrained checkpoint.
 DEFAULT_HPARAMS = dict(
-    ffn_hidden_dim=512, ffn_n_layers=1, ffn_dropout=0.2, ffn_activation="relu",
+    ffn_hidden_dim=256, ffn_n_layers=1, ffn_dropout=0.0, ffn_activation="relu",
     warmup_epochs=2, init_lr=1e-4, max_lr=1e-3, final_lr=1e-4,
 )
 
@@ -76,11 +76,12 @@ def _load_pretrained_encoder(checkpoint_path: str):
     return mp
 
 
-def build_model(checkpoint_path: str, hparams: dict) -> MPNN:
+def build_model(checkpoint_path: str, hparams: dict, output_transform: UnscaleTransform) -> MPNN:
     mp = _load_pretrained_encoder(checkpoint_path)
     agg = MeanAggregation()
     predictor = RegressionFFN(
         n_tasks=1,
+        output_transform=output_transform,
         input_dim=mp.output_dim,
         hidden_dim=hparams["ffn_hidden_dim"],
         n_layers=hparams["ffn_n_layers"],
@@ -134,6 +135,11 @@ def run_finetune(
     train_data = MoleculeDataset(_build_datapoints(train_df, target_column))
     val_data = MoleculeDataset(_build_datapoints(val_df, target_column))
     test_data = MoleculeDataset(_build_datapoints(test_df, target_column))
+    # Train on standardized targets; the predictor's UnscaleTransform maps
+    # eval-mode outputs back to original units, so test predictions need no
+    # extra handling.
+    scaler = train_data.normalize_targets()
+    val_data.normalize_targets(scaler)
 
     train_loader = build_dataloader(train_data, batch_size=batch_size, shuffle=True)
     val_loader = build_dataloader(val_data, batch_size=batch_size, shuffle=False)
@@ -144,7 +150,7 @@ def run_finetune(
     os.makedirs(save_path, exist_ok=True)
 
     hparams = {**DEFAULT_HPARAMS, **(hparam_overrides or {})}
-    model = build_model(checkpoint_path, hparams)
+    model = build_model(checkpoint_path, hparams, UnscaleTransform.from_standard_scaler(scaler))
 
     trainer = pl.Trainer(
         max_epochs=epochs,
@@ -190,9 +196,9 @@ def main():
     parser.add_argument("--prepared-dir", default="data/prepared")
     parser.add_argument("--checkpoint-dir", default="data/finetune_checkpoints")
     parser.add_argument("--output-dir", default="data/finetune_errors")
-    parser.add_argument("--epochs", type=int, default=1000)
+    parser.add_argument("--epochs", type=int, default=50, help="Default: the authors' evaluate.py max_epochs (also sets the LR decay horizon)")
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--patience", type=int, default=30)
+    parser.add_argument("--patience", type=int, default=5, help="Default: the authors' evaluate.py EarlyStopping patience")
     parser.add_argument("--val-fraction", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--run-tag", default=None, help="Optional suffix so a hyperparameter-sweep run is saved alongside the default config's result instead of overwriting it")

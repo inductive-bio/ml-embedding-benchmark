@@ -95,7 +95,7 @@ def _run_finetune_chemeleon(
     dataset_name: str,
     epochs: int,
     batch_size: int = 64,
-    patience: int = 30,
+    patience: int = 5,
     run_tag: str = "",
     warmup_epochs: int = None,
     force: bool = False,
@@ -182,9 +182,9 @@ finetune_chemeleon = app.function(
 def main(
     models: str = ",".join(CHECKPOINTS),
     datasets: str = ",".join(DATASETS),
-    epochs: int = 1000,
+    epochs: int = 50,
     batch_size: int = 64,
-    patience: int = 30,
+    patience: int = 5,
     run_tag: str = "",
     modal_gpu: str = "",
     warmup_epochs: int = 0,
@@ -193,7 +193,8 @@ def main(
     """--models: comma-separated model_name values (default: all 7).
     --datasets: comma-separated dataset names (default: all 17).
     Spawns one Modal container per (model, dataset) pair -- all 7 x 17 = 119 by default.
-    --epochs: max epochs, early-stopped on val_loss (default 1000).
+    --epochs: max epochs, early-stopped on val_loss (default 50, as in the
+    authors' evaluate.py).
     --batch-size / --patience: see model_wrappers/chemeleon/finetune.py defaults.
     --run-tag: optional label for a hyperparameter-sweep run, so it's saved
     alongside the default config's result under
