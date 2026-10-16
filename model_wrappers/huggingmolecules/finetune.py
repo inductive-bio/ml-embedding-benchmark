@@ -242,7 +242,11 @@ def run_finetune(
         step, lr_best_val_mae, epochs_since_improvement = 0, None, 0
         for epoch in range(epochs):
             step = _run_epoch(model, train_loader, loss_fn, optimizer, variant, device, grad_accum, lr_for_step, step)
-            val_mae = mean_absolute_error(y_val, _predict(model, val_loader, device) * y_std + y_mean)
+            val_pred = _predict(model, val_loader, device) * y_std + y_mean
+            if not np.isfinite(val_pred).all():
+                log.warning(f"lr {base_lr:g} epoch {epoch}: non-finite val predictions, abandoning this lr")
+                break
+            val_mae = mean_absolute_error(y_val, val_pred)
             log.info(f"lr {base_lr:g} epoch {epoch}: val_mae={val_mae:.4f}")
             if best_val_mae is None or val_mae < best_val_mae:
                 best_val_mae, best_lr = val_mae, base_lr
@@ -255,6 +259,8 @@ def run_finetune(
                     log.info(f"No val_mae improvement for {patience} epochs, stopping early at epoch {epoch}")
                     break
 
+    if best_state is None:
+        raise RuntimeError(f"All learning rates in {lr_grid} produced non-finite validation predictions")
     log.info(f"Selected lr {best_lr:g} (val_mae={best_val_mae:.4f})")
     model = build_model()
     model.load_state_dict(best_state)
