@@ -17,11 +17,11 @@ MAT and R-MAT follow their papers' fine-tuning recipes (MAT App. D; R-MAT
 App. C.4): 100 epochs with no early stopping and the best-validation epoch
 kept, batch size 32, Adam with the Noam schedule from
 experiments/src/training/training_callbacks.py, train-set standardized
-targets, and the learning rate (the only parameter either paper tunes)
-chosen on validation from a 7-value grid. R-MAT also gets the paper's
-2-layer prediction MLP in place of the released config's single linear
-layer. GROVER keeps its earlier recipe (constant LR, raw targets, patience
-5) since it is being dropped from the benchmark.
+targets, and a fixed Noam base LR of 5e-5 from huggingmolecules'
+mat.gin/rmat.gin (the papers' per-task LR search is not run). R-MAT also
+gets the paper's 2-layer prediction MLP in place of the released config's
+single linear layer. GROVER keeps its earlier recipe (constant LR, raw
+targets, patience 5) since it is being dropped from the benchmark.
 
 experiments/configs/tasks/regression.gin confirms MSELoss as the regression
 loss. GROVER's gin file swaps in `GroverLoss`, reimplemented here as
@@ -60,26 +60,22 @@ from huggingmolecules import MatFeaturizer, MatModel, RMatFeaturizer, RMatModel,
 
 log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-# Grid from MAT App. D and R-MAT App. C.4. Each value is the Noam base rate,
-# not the peak per-step rate (see _noam_lr).
-PAPER_LR_GRID = (1e-3, 5e-4, 1e-4, 5e-5, 1e-5, 5e-6, 1e-6)
-
 # noam_model_size and noam_warmup_factor: mat.gin (MAT) and the R-MAT paper's
 # 30% warmup (rmat.gin uses 0.2). noam_model_size=None means a constant LR.
 # patience=None trains every epoch, as both papers do.
 VARIANTS = {
     "mat": dict(
-        feat_cls=MatFeaturizer, model_cls=MatModel, lr_grid=PAPER_LR_GRID, batch_size=32, grad_accum=1,
+        feat_cls=MatFeaturizer, model_cls=MatModel, lr=5e-5, batch_size=32, grad_accum=1,
         weight_decay=0.0, noam_model_size=1024, noam_warmup_factor=0.2, standardize_targets=True,
         patience=None, head_hidden=None,
     ),
     "rmat": dict(
-        feat_cls=RMatFeaturizer, model_cls=RMatModel, lr_grid=PAPER_LR_GRID, batch_size=4, grad_accum=8,
+        feat_cls=RMatFeaturizer, model_cls=RMatModel, lr=5e-5, batch_size=4, grad_accum=8,
         weight_decay=0.0, noam_model_size=768, noam_warmup_factor=0.3, standardize_targets=True,
         patience=None, head_hidden=1024,
     ),
     "grover": dict(
-        feat_cls=GroverFeaturizer, model_cls=GroverModel, lr_grid=(1e-4,), batch_size=32, grad_accum=1,
+        feat_cls=GroverFeaturizer, model_cls=GroverModel, lr=1e-4, batch_size=32, grad_accum=1,
         weight_decay=2e-7, noam_model_size=None, noam_warmup_factor=None, standardize_targets=False,
         patience=5, head_hidden=None,
     ),
@@ -183,7 +179,7 @@ def run_finetune(
 ) -> str:
     variant = _variant_for(model_name)
     spec = VARIANTS[variant]
-    lr_grid = spec["lr_grid"] if lr is None else (lr,)
+    lr = spec["lr"] if lr is None else lr
     batch_size = spec["batch_size"] if batch_size is None else batch_size
     weight_decay = spec["weight_decay"] if weight_decay is None else weight_decay
     patience = spec["patience"] if patience is None else patience
@@ -221,48 +217,39 @@ def run_finetune(
     steps_per_epoch = math.ceil(len(train_loader) / grad_accum)
     loss_fn = nn.MSELoss()
 
-    def build_model():
-        model = spec["model_cls"].from_pretrained(model_name)
-        if spec["head_hidden"]:
-            model.generator.proj = _paper_rmat_head(model.generator.proj, spec["head_hidden"])
-        return model.to(device)
+    torch.manual_seed(seed)
+    model = spec["model_cls"].from_pretrained(model_name)
+    if spec["head_hidden"]:
+        model.generator.proj = _paper_rmat_head(model.generator.proj, spec["head_hidden"])
+    model = model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    lr_for_step = None
+    if spec["noam_model_size"]:
+        lr_for_step = functools.partial(
+            _noam_lr, lr, model_size=spec["noam_model_size"],
+            warmup_steps=spec["noam_warmup_factor"] * steps_per_epoch * epochs,
+        )
 
-    best_val_mae, best_state, best_lr = None, None, None
-    for base_lr in lr_grid:
-        torch.manual_seed(seed)
-        model = build_model()
-        optimizer = torch.optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
-        lr_for_step = None
-        if spec["noam_model_size"]:
-            lr_for_step = functools.partial(
-                _noam_lr, base_lr, model_size=spec["noam_model_size"],
-                warmup_steps=spec["noam_warmup_factor"] * steps_per_epoch * epochs,
-            )
-
-        step, lr_best_val_mae, epochs_since_improvement = 0, None, 0
-        for epoch in range(epochs):
-            step = _run_epoch(model, train_loader, loss_fn, optimizer, variant, device, grad_accum, lr_for_step, step)
-            val_pred = _predict(model, val_loader, device) * y_std + y_mean
-            if not np.isfinite(val_pred).all():
-                log.warning(f"lr {base_lr:g} epoch {epoch}: non-finite val predictions, abandoning this lr")
+    step, best_val_mae, best_state, epochs_since_improvement = 0, None, None, 0
+    for epoch in range(epochs):
+        step = _run_epoch(model, train_loader, loss_fn, optimizer, variant, device, grad_accum, lr_for_step, step)
+        val_pred = _predict(model, val_loader, device) * y_std + y_mean
+        if not np.isfinite(val_pred).all():
+            log.warning(f"epoch {epoch}: non-finite val predictions, stopping")
+            break
+        val_mae = mean_absolute_error(y_val, val_pred)
+        log.info(f"epoch {epoch}: val_mae={val_mae:.4f}")
+        if best_val_mae is None or val_mae < best_val_mae:
+            best_val_mae, epochs_since_improvement = val_mae, 0
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+        else:
+            epochs_since_improvement += 1
+            if patience is not None and epochs_since_improvement >= patience:
+                log.info(f"No val_mae improvement for {patience} epochs, stopping early at epoch {epoch}")
                 break
-            val_mae = mean_absolute_error(y_val, val_pred)
-            log.info(f"lr {base_lr:g} epoch {epoch}: val_mae={val_mae:.4f}")
-            if best_val_mae is None or val_mae < best_val_mae:
-                best_val_mae, best_lr = val_mae, base_lr
-                best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-            if lr_best_val_mae is None or val_mae < lr_best_val_mae:
-                lr_best_val_mae, epochs_since_improvement = val_mae, 0
-            else:
-                epochs_since_improvement += 1
-                if patience is not None and epochs_since_improvement >= patience:
-                    log.info(f"No val_mae improvement for {patience} epochs, stopping early at epoch {epoch}")
-                    break
 
     if best_state is None:
-        raise RuntimeError(f"All learning rates in {lr_grid} produced non-finite validation predictions")
-    log.info(f"Selected lr {best_lr:g} (val_mae={best_val_mae:.4f})")
-    model = build_model()
+        raise RuntimeError("Training diverged before the first validation check")
     model.load_state_dict(best_state)
 
     checkpoint_name = f"{model_name}_{run_tag}" if run_tag else model_name
@@ -297,7 +284,7 @@ def main():
     parser.add_argument("--checkpoint-dir", default="data/finetune_checkpoints")
     parser.add_argument("--output-dir", default="data/finetune_errors")
     parser.add_argument("--epochs", type=int, default=100, help="Default: 100, as in both papers and experiments/configs/models/*.gin")
-    parser.add_argument("--lr", type=float, default=None, help="Train this single (Noam base) LR instead of the variant's lr_grid")
+    parser.add_argument("--lr", type=float, default=None, help="Default: this model family's VARIANTS lr (the Noam base rate for MAT/R-MAT, see _noam_lr)")
     parser.add_argument("--batch-size", type=int, default=None, help="Default: this model family's own VARIANTS entry (micro-batch size; R-MAT accumulates 8 of them)")
     parser.add_argument("--weight-decay", type=float, default=None, help="Default: this model family's own VARIANTS entry")
     parser.add_argument("--patience", type=int, default=None, help="Stop a run early after this many epochs with no val_mae improvement. Default: the VARIANTS entry (none for MAT/R-MAT)")
