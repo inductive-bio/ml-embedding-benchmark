@@ -158,11 +158,18 @@ class CompoundKit(object):
     """
     atom_vocab_dict = {
         "atomic_num": list(range(1, 119)) + ['misc'],
-        "chiral_tag": rdchem_enum_to_list(rdchem.ChiralType.values),
+        # chiral_tag and hybridization are fixed to the RDKit enums the GEM checkpoint was
+        # trained with. Newer RDKit adds values (and inserts SP2D into hybridization), which
+        # changes the embedding shapes so those tables silently stay randomly initialized.
+        "chiral_tag": [rdchem.ChiralType.CHI_UNSPECIFIED, rdchem.ChiralType.CHI_TETRAHEDRAL_CW,
+                       rdchem.ChiralType.CHI_TETRAHEDRAL_CCW, rdchem.ChiralType.CHI_OTHER],
         "degree": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'misc'],
         "explicit_valence": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 'misc'],
         "formal_charge": [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'misc'],
-        "hybridization": rdchem_enum_to_list(rdchem.HybridizationType.values),
+        "hybridization": [rdchem.HybridizationType.UNSPECIFIED, rdchem.HybridizationType.S,
+                          rdchem.HybridizationType.SP, rdchem.HybridizationType.SP2,
+                          rdchem.HybridizationType.SP3, rdchem.HybridizationType.SP3D,
+                          rdchem.HybridizationType.SP3D2, rdchem.HybridizationType.OTHER],
         "implicit_valence": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 'misc'],
         "is_aromatic": [0, 1],
         "total_numHs": [0, 1, 2, 3, 4, 5, 6, 7, 8, 'misc'],
