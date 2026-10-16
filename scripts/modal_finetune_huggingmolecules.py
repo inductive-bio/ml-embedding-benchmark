@@ -144,7 +144,9 @@ finetune_huggingmolecules = app.function(
     volumes={str(MOUNT): volume},
     gpu="T4",
     cpu=4.0,
-    timeout=60 * 60 * 6,
+    # MAT/R-MAT train 100 epochs for each of 7 learning rates in one
+    # container; 24h is Modal's maximum.
+    timeout=60 * 60 * 24,
 )(_run_finetune_huggingmolecules)
 
 
@@ -164,6 +166,7 @@ def main(
     are not exposed here -- finetune.py picks each variant's own documented default
     (see model_wrappers/huggingmolecules/finetune.py's VARIANTS); pass --run-tag and
     invoke finetune.py directly (via a one-off container) for a hyperparameter sweep.
+    MAT and R-MAT already select their LR on validation from the papers' grid.
     --epochs: default 100, matching every model family's own
     experiments/configs/models/*.gin num_epochs.
     --run-tag: optional label for a hyperparameter-sweep run.
