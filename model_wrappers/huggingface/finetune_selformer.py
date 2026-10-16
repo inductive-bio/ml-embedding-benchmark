@@ -18,9 +18,11 @@ train/val/test DataFrames every wrapper here must share (finetune_data.py);
 avoided here by calling to_selfies.to_selfies() directly per-row, which only
 needs the `selfies` package (already in modal_embed_selformer.py's image).
 
-Hyperparameter defaults below (epochs=50, lr=1e-5, batch_size=8, wd=0.1)
-mirror train_regression_model.py's own argparse defaults exactly, same as
-model_wrappers/unimol/finetune.py mirrors unimol_tools.MolTrain's defaults.
+Hyperparameter defaults below (epochs=25, lr=5e-5, train batch 16, val
+batch 8, wd=0, standardized targets) follow the regression recipe in the
+SELFormer README and paper, not train_regression_model.py's argparse
+defaults. Upstream fits a separate scaler on each split; here one scaler is
+fit on train and predictions are mapped back to original units.
 
 Usage:
     python model_wrappers/huggingface/finetune_selformer.py --dataset reg_openadmet_pxr_pEC50
@@ -154,15 +156,16 @@ def run_finetune(
     model = SELFIESTransformers_For_Regression.from_pretrained(pretrained_dir, config=config)
     tokenizer = RobertaTokenizerFast.from_pretrained(pretrained_dir, do_lower_case=False)
 
-    train_dataset = SELFIESTransfomers_Dataset(
-        train_df["selfies"].astype(str).tolist(), train_df[target_column].astype(float).tolist(), tokenizer
-    )
-    val_dataset = SELFIESTransfomers_Dataset(
-        val_df["selfies"].astype(str).tolist(), val_df[target_column].astype(float).tolist(), tokenizer
-    )
-    test_dataset = SELFIESTransfomers_Dataset(
-        test_df["selfies"].astype(str).tolist(), test_df[target_column].astype(float).tolist(), tokenizer
-    )
+    y_train = train_df[target_column].to_numpy(dtype=float)
+    y_mean, y_std = y_train.mean(), y_train.std()
+
+    def make_dataset(df):
+        y = (df[target_column].to_numpy(dtype=float) - y_mean) / y_std
+        return SELFIESTransfomers_Dataset(df["selfies"].astype(str).tolist(), y.tolist(), tokenizer)
+
+    train_dataset = make_dataset(train_df)
+    val_dataset = make_dataset(val_df)
+    test_dataset = make_dataset(test_df)
 
     training_args = TrainingArguments(
         output_dir=save_path,
@@ -185,7 +188,7 @@ def run_finetune(
     trainer.save_model(save_path)
 
     raw_pred, _, _ = trainer.predict(test_dataset)
-    y_pred = np.asarray([row[0] for row in raw_pred], dtype=float)
+    y_pred = np.asarray([row[0] for row in raw_pred], dtype=float) * y_std + y_mean
 
     out_path = save_finetune_result(
         dataset_name=dataset_name,
@@ -208,11 +211,11 @@ def main():
     parser.add_argument("--prepared-dir", default="data/prepared")
     parser.add_argument("--checkpoint-dir", default="data/finetune_checkpoints")
     parser.add_argument("--output-dir", default="data/finetune_errors")
-    parser.add_argument("--epochs", type=int, default=50, help="Default: train_regression_model.py's own --num_epochs default")
-    parser.add_argument("--lr", type=float, default=1e-5, help="Default: train_regression_model.py's own --lr default")
-    parser.add_argument("--train-batch-size", type=int, default=8)
+    parser.add_argument("--epochs", type=int, default=25, help="Default: the README's regression example")
+    parser.add_argument("--lr", type=float, default=5e-5, help="Default: the README's regression example")
+    parser.add_argument("--train-batch-size", type=int, default=16)
     parser.add_argument("--validation-batch-size", type=int, default=8)
-    parser.add_argument("--wd", type=float, default=0.1)
+    parser.add_argument("--wd", type=float, default=0.0)
     parser.add_argument("--val-fraction", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--run-tag", default=None, help="Optional suffix so a hyperparameter-sweep run is saved alongside the default config's result instead of overwriting it")
