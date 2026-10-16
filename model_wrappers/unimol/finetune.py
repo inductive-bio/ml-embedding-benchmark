@@ -35,6 +35,10 @@ from src.common.utils import cuda_available
 
 from unimol_tools import MolPredict, MolTrain
 
+# Importing wrapper applies its UniMolV2Model.batch_collate_fn padding-mask
+# patch, which MolTrain/MolPredict use for training and prediction.
+import wrapper  # noqa: F401
+
 log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
