@@ -187,22 +187,23 @@ finetune_molbert = app.function(
     volumes={str(MOUNT): volume},
     gpu="T4",
     cpu=4.0,
-    timeout=60 * 60 * 3,
+    # 50 epochs at max_seq_length 512 on the largest endpoints.
+    timeout=60 * 60 * 12,
 )(_run_finetune_molbert)
 
 
 @app.local_entrypoint()
 def main(
     datasets: str = ",".join(DATASETS),
-    max_epochs: int = 20,
+    max_epochs: int = 50,
     gpus: int = 1,
     run_tag: str = "",
     modal_gpu: str = "",
     force: bool = False,
 ):
     """--datasets: comma-separated dataset names (default: all 17).
-    --max-epochs: default 20, apps/args.py's own --max_epochs default
-    (EarlyStopping with patience=5 on valid_loss usually stops well before this).
+    --max-epochs: default 50, the authors' run_finetuning.py value (no early
+    stopping; the best valid_loss checkpoint is scored).
     --gpus: GPUs per container for pytorch_lightning.Trainer (default 1).
     --run-tag: optional label for a hyperparameter-sweep run.
     --modal-gpu: override GPU type (default: T4). Pass "none" for CPU-only
