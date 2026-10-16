@@ -68,8 +68,14 @@ from src.common.finetune_results import save_finetune_result
 from molbert.apps.base import BaseMolbertApp
 from molbert.apps.finetune import FinetuneSmilesMolbertApp
 from molbert.utils.featurizer.molfeaturizer import SmilesIndexFeaturizer
+from rdkit import RDLogger
 
 log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s")
+# molfeaturizer.py logs rejected SMILES verbatim through the root logger;
+# structures must not reach logs.
+log.getLogger().addFilter(lambda record: not record.pathname.endswith("molfeaturizer.py"))
+# RDKit's C++ parser writes rejected SMILES straight to stderr.
+RDLogger.DisableLog("rdApp.error")
 
 MOLBERT_ROOT = os.path.dirname(os.path.abspath(__file__))
 PRETRAINED_MODEL_PATH = os.path.join(MOLBERT_ROOT, "weights", "molbert_100epochs", "checkpoints", "last.ckpt")
@@ -238,7 +244,8 @@ def run_finetune(
         max_epochs=max_epochs,
         min_epochs=min_epochs,
         val_check_interval=args.val_check_interval,
-        accumulate_grad_batches=args.accumulate_grad_batches,
+        # PL 0.8.4 expands an int k to {0: 1, 1: k}, skipping accumulation in epoch 0.
+        accumulate_grad_batches={0: args.accumulate_grad_batches},
         gpus=gpus,
         checkpoint_callback=checkpoint_callback,
         early_stop_callback=early_stop_callback,
