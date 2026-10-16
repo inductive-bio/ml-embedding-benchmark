@@ -46,6 +46,7 @@ import argparse
 import copy
 import logging as log
 import os
+import random
 import sys
 
 import numpy as np
@@ -98,6 +99,16 @@ class Args:
             setattr(self, k, v)
 
 
+def _set_seed(seed: int) -> None:
+    """Same seeding as simson_repo/main.py::set_seed."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
 def _load_tokenizer() -> Tokenizer:
     tokenizer = Tokenizer.from_file(TOKENIZER_PATH)
     tokenizer.enable_padding(pad_id=0, pad_token="[PAD]", length=MAX_LEN)
@@ -127,6 +138,7 @@ def run_finetune(
 ) -> str:
     model_name = "simson"
     target_column = dataset_config["source"]["target_column"]
+    _set_seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_df, val_df, test_df = load_finetune_splits(
@@ -240,7 +252,7 @@ def main():
     parser.add_argument("--checkpoint-dir", default="data/finetune_checkpoints")
     parser.add_argument("--output-dir", default="data/finetune_errors")
     parser.add_argument("--epochs", type=int, default=500, help="Default: config.py's own --epochs default (early stopping via --patience makes this an upper bound, not a target)")
-    parser.add_argument("--lr", type=float, default=1e-6, help="Default: config.py's own --lr default")
+    parser.add_argument("--lr", type=float, default=5e-5, help="Default: downstream.sh's LR for ESOL and Lipophilicity (config.py's 1e-6 is overridden for every downstream task)")
     parser.add_argument("--batch-size", type=int, default=128, help="Default: config.py's own --batch_size default")
     parser.add_argument("--patience", type=int, default=10, help="Default: config.py's own --patience default")
     parser.add_argument("--weight-decay", type=float, default=0.01, help="Default: config.py's own --weight_decay default")
