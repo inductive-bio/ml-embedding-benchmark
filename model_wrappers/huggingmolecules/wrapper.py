@@ -18,7 +18,7 @@ class HuggingMoleculesEmbedder(SmilesEmbedder):
         self._model_name = model_path
         self._device = get_device()
         self._featurizer = self.FEAT_CLS.from_pretrained(model_path)
-        self._model = self.MODEL_CLS.from_pretrained(model_path).to(self._device)
+        self._model = self.MODEL_CLS.from_pretrained(model_path).to(self._device).eval()
         self._batch_size = 128
         
     def process_step(self, single_smile):
@@ -109,7 +109,8 @@ class GroverEmbedder(HuggingMoleculesEmbedder):
 
     def process_batch(self, smiles):
         batch = self._featurizer(smiles).to(self._device)
-        atom_ffn_output, bond_ffn_output = self._model(batch)
+        with torch.no_grad():
+            atom_ffn_output, bond_ffn_output = self._model(batch)
         return torch.cat([atom_ffn_output, bond_ffn_output], 1)
 
     def process_step(self, single_smile):
