@@ -36,6 +36,13 @@ literally named `SMILES` -- the CLI's own `--smiles_column` flag exists but
 is never actually read by the dataset. Every split CSV below is written with
 that exact column name for this reason.
 
+Defaults follow the authors' scripts/run_finetuning.py: max_seq_length 512,
+50 epochs with no early stopping, validation every quarter epoch, the best
+valid_loss checkpoint scored on test, and batch size 16 (run here as 2
+accumulated micro-batches of 8 to fit a T4, the only Modal GPU torch==1.4.0's
+CUDA 10 build supports). The authors never published their learning rate or
+freeze level, so those keep apps/args.py's 3e-5 and a full fine-tune.
+
 Usage:
     python model_wrappers/molbert/finetune.py --dataset reg_openadmet_pxr_pEC50
 """
@@ -61,13 +68,20 @@ from src.common.finetune_results import save_finetune_result
 from molbert.apps.base import BaseMolbertApp
 from molbert.apps.finetune import FinetuneSmilesMolbertApp
 from molbert.utils.featurizer.molfeaturizer import SmilesIndexFeaturizer
+from rdkit import RDLogger
 
 log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s")
+# molfeaturizer.py logs rejected SMILES verbatim through the root logger;
+# structures must not reach logs.
+log.getLogger().addFilter(lambda record: not record.pathname.endswith("molfeaturizer.py"))
+# RDKit's C++ parser writes rejected SMILES straight to stderr.
+RDLogger.DisableLog("rdApp.error")
 
 MOLBERT_ROOT = os.path.dirname(os.path.abspath(__file__))
 PRETRAINED_MODEL_PATH = os.path.join(MOLBERT_ROOT, "weights", "molbert_100epochs", "checkpoints", "last.ckpt")
 TEST_BATCH_SIZE = 64
-MAX_SEQ_LENGTH = 128  # matches apps/args.py's --max_seq_length default and the pretrained checkpoint's hparams.yaml
+# run_finetuning.py's value; the checkpoint has 512 position embeddings.
+MAX_SEQ_LENGTH = 512
 
 
 def _drop_unencodable(df, target_column: str, max_seq_length: int = MAX_SEQ_LENGTH):
@@ -151,6 +165,8 @@ def run_finetune(
     min_epochs: int,
     lr: float,
     batch_size: int,
+    accumulate_grad_batches: int,
+    val_check_interval: float,
     patience: int,
     freeze_level: int,
     val_fraction: float,
@@ -202,9 +218,11 @@ def run_finetune(
         "--min_epochs", str(min_epochs),
         "--learning_rate", str(lr),
         "--batch_size", str(batch_size),
+        "--accumulate_grad_batches", str(accumulate_grad_batches),
+        "--max_seq_length", str(MAX_SEQ_LENGTH),
         "--gpus", str(gpus),
         "--num_workers", "0",
-        "--val_check_interval", "1.0",
+        "--val_check_interval", str(val_check_interval),
         "--default_root_dir", run_dir,
         "--progress_bar_refresh_rate", "0",
         "--seed", str(seed),
@@ -214,16 +232,20 @@ def run_finetune(
     seed_everything(args.seed)
     model = app.get_model(args)
 
+    # period=0 so every intra-epoch validation is a checkpoint candidate; with
+    # PL 0.8.4's default period=1 only the first check of each epoch is.
     checkpoint_callback = ModelCheckpoint(
-        filepath=os.path.join(run_dir, "checkpoints"), monitor="valid_loss", save_top_k=1,
+        filepath=os.path.join(run_dir, "checkpoints"), monitor="valid_loss", save_top_k=1, period=0,
     )
-    early_stop_callback = EarlyStopping(monitor="valid_loss", patience=patience)
+    early_stop_callback = EarlyStopping(monitor="valid_loss", patience=patience) if patience else False
 
     trainer = Trainer(
         default_root_dir=run_dir,
         max_epochs=max_epochs,
         min_epochs=min_epochs,
         val_check_interval=args.val_check_interval,
+        # PL 0.8.4 expands an int k to {0: 1, 1: k}, skipping accumulation in epoch 0.
+        accumulate_grad_batches={0: args.accumulate_grad_batches},
         gpus=gpus,
         checkpoint_callback=checkpoint_callback,
         early_stop_callback=early_stop_callback,
@@ -259,11 +281,13 @@ def main():
     parser.add_argument("--prepared-dir", default="data/prepared")
     parser.add_argument("--checkpoint-dir", default="data/finetune_checkpoints")
     parser.add_argument("--output-dir", default="data/finetune_errors")
-    parser.add_argument("--max-epochs", type=int, default=20, help="Default: apps/args.py's own --max_epochs default")
+    parser.add_argument("--max-epochs", type=int, default=50, help="Default: run_finetuning.py's max_epochs")
     parser.add_argument("--min-epochs", type=int, default=1, help="Default: apps/args.py's own --min_epochs default")
     parser.add_argument("--lr", type=float, default=3e-5, help="Default: apps/args.py's own --learning_rate default")
-    parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--patience", type=int, default=5, help="EarlyStopping patience on valid_loss (mirrors model_wrappers/unimol/finetune.py's --early-stopping default)")
+    parser.add_argument("--batch-size", type=int, default=8, help="Micro-batch size; times --accumulate-grad-batches gives run_finetuning.py's batch size of 16")
+    parser.add_argument("--accumulate-grad-batches", type=int, default=2)
+    parser.add_argument("--val-check-interval", type=float, default=0.25, help="Default: apps/args.py's default, which run_finetuning.py uses")
+    parser.add_argument("--patience", type=int, default=None, help="EarlyStopping patience on valid_loss checks. Default: none, as in run_finetuning.py")
     parser.add_argument("--freeze-level", type=int, default=0, help="0 = full fine-tune (apps/finetune.py's own default); see FinetuneSmilesMolbertApp.freeze_network for other values")
     parser.add_argument("--pretrained-model-path", default=PRETRAINED_MODEL_PATH, help="Override for containers where weights/ isn't a sibling of this file (e.g. Modal, see model_wrappers/molbert/Dockerfile.modal)")
     parser.add_argument("--gpus", type=int, default=0, help="Number of GPUs for pytorch_lightning.Trainer (0 = CPU). torch==1.4.0's PyPI wheel has working CUDA support, confirmed against both a local GPU and a Modal T4.")
@@ -292,6 +316,8 @@ def main():
         min_epochs=args.min_epochs,
         lr=args.lr,
         batch_size=args.batch_size,
+        accumulate_grad_batches=args.accumulate_grad_batches,
+        val_check_interval=args.val_check_interval,
         patience=args.patience,
         freeze_level=args.freeze_level,
         pretrained_model_path=args.pretrained_model_path,
