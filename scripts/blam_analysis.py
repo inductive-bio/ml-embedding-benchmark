@@ -473,10 +473,6 @@ def main():
         raise SystemExit("No endpoints had >=2 embeddings with full method coverage -- nothing to fit")
 
     global_embeddings = sorted({e for stat in stats for e in stat.embeddings})
-    requested = set(allowed or ()) | {entity for entity, _ in finetuned_specs or ()}
-    missing = sorted(requested - set(global_embeddings))
-    if missing:
-        log.warning(f"{len(missing)} requested entity(ies) have no results on any endpoint: {missing}")
     log.info(f"Fitting {len(global_embeddings)} embeddings across {len(stats)} endpoints")
 
     prior_log_s = np.log(compute_prior_scale(stats) / np.sqrt(2))

@@ -88,7 +88,7 @@ python scripts/blam_analysis.py \
     --output data/blam
 ```
 
-The two list files hold the 35 frozen embeddings and 13 fine-tuned models used in the paper. Frozen model families with several variants were pruned to the variant with the best CV score; each fine-tuned family was run with a single variant. The script warns about any listed model that has no results, and writes `posterior.joblib` and summary CSVs for latent ability, per-endpoint parameters, and per-endpoint specialization. `scripts/modal_blam_analysis.py` runs the chains as separate Modal containers.
+The two list files hold the 35 frozen embeddings and 13 fine-tuned models used in the paper. Frozen model families with several variants were pruned to the variant with the best CV score; each fine-tuned family was run with a single variant. The script writes `posterior.joblib` and summary CSVs for latent ability, per-endpoint parameters, and per-endpoint specialization. `scripts/modal_blam_analysis.py` runs the chains as separate Modal containers.
 
 ### 6. Reports and checks
 
