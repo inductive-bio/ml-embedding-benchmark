@@ -15,3 +15,45 @@ updates:
               - '*'
     cooldown:
       default-days: 7
+
+  - package-ecosystem: docker
+    directory: /model_wrappers/KERMT
+    schedule:
+      interval: daily
+    allow:
+      - dependency-type: all
+    groups:
+      docker-image-deps:
+          applies-to: version-updates
+          patterns:
+              - '*'
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: docker
+    directory: /model_wrappers/graphmvp
+    schedule:
+      interval: daily
+    allow:
+      - dependency-type: all
+    groups:
+      docker-image-deps:
+          applies-to: version-updates
+          patterns:
+              - '*'
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: docker
+    directory: /model_wrappers/molbert
+    schedule:
+      interval: daily
+    allow:
+      - dependency-type: all
+    groups:
+      docker-image-deps:
+          applies-to: version-updates
+          patterns:
+              - '*'
+    cooldown:
+      default-days: 7
