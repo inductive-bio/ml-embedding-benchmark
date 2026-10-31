@@ -45,13 +45,13 @@ To embed every dataset with one wrapper:
 
 `./run_embed.sh <wrapper>` runs the same thing in the background. The datasets are listed in `config/embed.yaml`, the available wrappers and their model variants in `config/experiment/`. Embeddings are saved as an [EmbeddedDataset](src/common/types.py) under `data/embedded/<dataset>/<model>.<joblib|json>`. Some older wrappers use a custom JSON serialization because their environments have incompatible pandas versions.
 
-`scripts/modal_embed*.py` run the same procedure on [Modal](https://modal.com). 3D descriptor and conformer-based embeddings (Mordred with 3D descriptors, RDKit-3D, and their Boltzmann-weighted aggregates) are produced by `scripts/modal_generate_conformers.py`, `scripts/modal_optimize_conformers.py`, `scripts/modal_embed_descriptors.py`, and `scripts/modal_embed_aggregated_conformers.py`.
+`scripts/modal_embed*.py` run the same procedure on [Modal](https://modal.com). Descriptors computed on 3D conformers (Mordred with 3D descriptors and RDKit-3D, averaged over each molecule's conformer ensemble with Boltzmann or uniform weights) are produced by `scripts/modal_generate_conformers.py`, `scripts/modal_optimize_conformers.py`, `scripts/modal_embed_descriptors.py`, and `scripts/modal_embed_aggregated_conformers.py`.
 
 A small number of SMILES that some models cannot process (for example SELFIES translation failures or dative bonds) are listed in [config/illegal_smiles.txt](config/illegal_smiles.txt) and filtered out before embedding.
 
 ### 3. Fine-tune end to end
 
-Models whose authors provide an end-to-end regression fine-tuning method are fine-tuned on each endpoint via `model_wrappers/<wrapper>/finetune.py`, following that method with one default learning rate per model (no per-endpoint search). Chemprop (2D and 3D features) is trained end to end from scratch via `model_wrappers/chemprop/finetune.py`. Results are written to `data/finetune_errors/<dataset>/<model>__finetuned.joblib`. `scripts/modal_finetune_<wrapper>.py` runs the same procedure on Modal.
+Models whose authors provide an end-to-end regression fine-tuning method are fine-tuned on each endpoint via `model_wrappers/<wrapper>/finetune.py` (`finetune_selformer.py` for SELFormer), following that method with one default learning rate per model (no per-endpoint search). Chemprop (2D and 3D features) is trained end to end from scratch via `model_wrappers/chemprop/finetune.py`. Fine-tuning scripts for SimSon and GROVER are also included but were not part of the paper's results. Results are written to `data/finetune_errors/<dataset>/<model>__finetuned.joblib`. `scripts/modal_finetune_<wrapper>.py` runs the same procedure on Modal.
 
 ### 4. Score frozen embeddings
 
@@ -61,7 +61,7 @@ For each (embedding, regression head) pair, `scripts/compute_prediction_errors.p
 python scripts/compute_prediction_errors.py --embedding ECFP_count --method rf
 ```
 
-Supported heads, with hyperparameters chosen by 5-fold CV (App. C.2):
+Supported heads, with hyperparameters chosen by 5-fold CV (App. C.2). The CV score is Spearman correlation (the `metric` in each `config/dataset/*.yaml`), and it is also what `blam_analysis.py` uses to pick each embedding's best head:
 
 | Head | Search |
 |---|---|
@@ -71,7 +71,9 @@ Supported heads, with hyperparameters chosen by 5-fold CV (App. C.2):
 | `tabicl` | no search; 5-fold CV score, then one fit on all training data |
 | `tabpfn` | no search (TabPFN v3); same as `tabicl` |
 
-TabICL and TabPFN inputs are standardized and clamped to [-6, 6]. `scripts/modal_score_errors.py` fans this out on Modal, one container per (embedding, head, endpoint).
+TabICL and TabPFN inputs are standardized and clamped to [-6, 6]. TabPFN's default checkpoint is gated on Hugging Face, so it needs an `HF_TOKEN` with access granted.
+
+`scripts/modal_score_errors.py` fans this out on Modal, one container per (embedding, head, endpoint). It runs only `rf`, `ridge`, and `knn` by default. `blam_analysis.py` only includes an embedding on an endpoint once all five heads have results, so pass `--methods rf,ridge,knn,tabicl,tabpfn`.
 
 ### 5. Fit the latent ability model
 
@@ -86,13 +88,13 @@ python scripts/blam_analysis.py \
     --output data/blam
 ```
 
-The two list files hold the 35 frozen embeddings and 13 fine-tuned models used in the paper, after pruning each model family to its best variant by CV score. The script writes `posterior.joblib` and summary CSVs for latent ability, per-endpoint parameters, and per-endpoint specialization. `scripts/modal_blam_analysis.py` runs the chains as separate Modal containers.
+The two list files hold the 35 frozen embeddings and 13 fine-tuned models used in the paper. Frozen model families with several variants were pruned to the variant with the best CV score; each fine-tuned family was run with a single variant. The script warns about any listed model that has no results, and writes `posterior.joblib` and summary CSVs for latent ability, per-endpoint parameters, and per-endpoint specialization. `scripts/modal_blam_analysis.py` runs the chains as separate Modal containers.
 
 ### 6. Reports and checks
 
-- `scripts/visualize_blam.py` turns the posterior into ranking charts, comparisons against the ECFP baseline on observed and new endpoints (App. C.5), and interactive dashboards.
+- `scripts/visualize_blam.py` turns the posterior into ranking charts, comparisons against the ECFP (count) baseline on observed and new endpoints (App. C.5, including Table 7's P(δ > 0), 90% interval, and new-endpoint win rate via `--compare-ecfp`), and interactive dashboards. Pass `--display-names config/blam/model_display_names.json` to use the paper's model labels.
 - `scripts/pl_variance_inflation.py` (and `scripts/modal_pl_variance_inflation.py` for the full NUTS replicate count) simulates BBT on Plackett-Luce rankings to check the variance inflation factor (App. A.6).
-- `scripts/blam_robustness_checks.py` runs additional sensitivity checks on the fitted model.
+- `scripts/blam_robustness_checks.py` runs additional sensitivity checks on the fitted model in `data/blam` (not reported in the paper).
 
 ## Adding a model
 

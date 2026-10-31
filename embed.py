@@ -51,7 +51,7 @@ def main(cfg):
     if illegal_smiles_path is not None:
         with open(join(get_original_cwd(), illegal_smiles_path), 'r') as f:
             illegal_smiles = [line.strip() for line in f.readlines()]
-        log.info(f"Filtering out illegal SMILES: {illegal_smiles}")
+        log.info(f"Filtering out {len(illegal_smiles)} illegal SMILES")
         dataset.filter_out_problematic_molecules(illegal_smiles)
     
     embed(embed_config, dataset, model, cache=cfg.cache)

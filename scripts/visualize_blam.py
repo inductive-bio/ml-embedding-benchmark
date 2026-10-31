@@ -198,6 +198,9 @@ def compute_ecfp_comparison(posterior: dict, baseline: str, seed: int = 0) -> pd
             "prob_beat_baseline": prob_beat,
             "p_value": 2 * min(prob_beat, 1 - prob_beat),
             "delta_mean": float(delta.mean()),
+            "delta_ci90_low": float(np.percentile(delta, 5)),
+            "delta_ci90_high": float(np.percentile(delta, 95)),
+            "prob_delta_positive": float((delta > 0).mean()),
         })
     return pd.DataFrame(rows).sort_values("prob_beat_baseline").reset_index(drop=True)
 
@@ -1477,8 +1480,8 @@ def main():
     )
     parser.add_argument("--posterior-input", default="data/blam/posterior.joblib")
     parser.add_argument(
-        "--ecfp-baseline", default="ECFP",
-        help="Embedding name to use as the baseline for --compare-ecfp (default: ECFP, the uncounted fingerprint)",
+        "--ecfp-baseline", default="ECFP_count",
+        help="Embedding name to use as the baseline for --compare-ecfp (default: ECFP_count, the paper's baseline)",
     )
     parser.add_argument("--alpha", type=float, default=0.05, help="Significance threshold for --compare-ecfp's p-value")
     parser.add_argument("--compare-output", default="data/blam/ecfp_comparison.png")
@@ -1498,7 +1501,7 @@ def main():
     parser.add_argument("--endpoint-compare-output", default="data/blam/ecfp_endpoint_comparison.html")
     parser.add_argument(
         "--display-names", default=None,
-        help="Path to a JSON {raw_name: display_name} map (see data/blam_v2/model_display_names.json) used to "
+        help="Path to a JSON {raw_name: display_name} map (config/blam/model_display_names.json has the paper's labels) used to "
         "relabel embeddings everywhere they're plotted; fine-tuned entities ('<name>_finetuned') look up their "
         "base name and get a ' (fine-tuned)' suffix plus bold styling. Names missing from the map fall back to "
         "the raw name.",
@@ -1527,6 +1530,7 @@ def main():
     if args.compare_ecfp:
         comparison_df = compute_ecfp_comparison(posterior, args.ecfp_baseline, args.compare_seed)
         plot_ecfp_comparison(comparison_df, args.compare_output, args.ecfp_baseline, args.alpha, display_names)
+        comparison_df.to_csv(os.path.splitext(args.compare_output)[0] + ".csv", index=False)
 
     if args.compare_ecfp_gif:
         comparison_df = compute_ecfp_comparison(posterior, args.ecfp_baseline, args.compare_seed)

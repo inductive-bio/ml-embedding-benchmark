@@ -57,13 +57,13 @@ class ChemeleonEmbedder(SmilesEmbedder):
             # MoleculeDatapoint.from_smi() raises on the first unparsable
             # SMILES in a chunk, taking every other molecule down with it --
             # fall back to encoding one at a time so only the bad ones get NaN'd.
-            log.warning(f"Batch failed, processing each SMILES individually: {e}")
+            log.warning(f"Batch failed, processing each SMILES individually: {type(e).__name__}")
             rows = []
-            for smi in smiles_batch:
+            for i, smi in enumerate(smiles_batch):
                 try:
                     rows.append(self._encode_chunk([smi])[0])
                 except Exception as inner_e:
-                    log.error(f"Failed to embed '{smi}': {inner_e}")
+                    log.error(f"Failed to embed molecule {i} of batch: {type(inner_e).__name__}")
                     rows.append(np.full(self._dim, np.nan))
             return np.stack(rows, axis=0)
 

@@ -1,5 +1,5 @@
-"""Six robustness checks for the BLAM fit copied into data/blam_tests (raw
-copy of data/blam_v2_monroe's posterior.joblib etc., see data/blam_tests/raw).
+"""Six robustness checks for the BLAM fit written by scripts/blam_analysis.py
+(data/blam/posterior.joblib). Results go to data/blam_tests/.
 
   1. truncation:       drop the low-theta embeddings, refit, compare
                         per-endpoint P(i > ECFP) for the retained embeddings.
@@ -68,9 +68,9 @@ from blam_analysis import (  # noqa: E402
 
 log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-RAW_DIR = "data/blam_tests/raw"
+RAW_DIR = "data/blam"
 OUT_DIR = "data/blam_tests"
-ERRORS_DIR = "data/errors/errors"  # nested dir is the current one -- see investigation notes in PR description
+ERRORS_DIR = "data/errors"
 FINETUNE_DIR = "data/finetune_errors"
 DATASET_GLOB = "reg_openadmet_*"
 BASELINE = "ECFP_count"
