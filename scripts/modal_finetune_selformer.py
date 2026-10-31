@@ -77,7 +77,7 @@ def _run_finetune_selformer(
     dataset_name: str,
     model_name: str,
     epochs: int,
-    lr: float = 1e-5,
+    lr: float = 5e-5,
     run_tag: str = "",
     force: bool = False,
 ) -> str:
@@ -151,8 +151,8 @@ finetune_selformer = app.function(
 def main(
     datasets: str = ",".join(DATASETS),
     model_names: str = "SELFormer",
-    epochs: int = 50,
-    lr: float = 1e-5,
+    epochs: int = 25,
+    lr: float = 5e-5,
     run_tag: str = "",
     modal_gpu: str = "",
     force: bool = False,
@@ -160,8 +160,8 @@ def main(
     """--datasets: comma-separated dataset names (default: all 17).
     --model-names: comma-separated model variants (default: 'SELFormer' only --
     pass 'SELFormer,SELFormer-Lite' for both).
-    --epochs: default 50, train_regression_model.py's own --num_epochs default.
-    --lr: default 1e-5, train_regression_model.py's own --lr default.
+    --epochs: default 25, the SELFormer README's regression recipe.
+    --lr: default 5e-5, the SELFormer README's regression recipe.
     --run-tag: optional label for a hyperparameter-sweep run.
     --modal-gpu: override GPU type (default: T4). Pass "none" for CPU-only.
     --force: recompute and overwrite even if a cached result already exists."""
