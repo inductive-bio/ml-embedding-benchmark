@@ -115,7 +115,7 @@ def _prepare_psi(posterior_subdir: str):
         "endpoint_params": {
             s.name: {
                 "mu": float(np.asarray(samples[f"mu__{s.name}"]).mean()),
-                "a": float(np.asarray(samples[f"beta__{s.name}"]).mean()),
+                "a": float(np.asarray(samples[f"a__{s.name}"]).mean()),
                 "omega": float(np.asarray(samples[f"omega__{s.name}"]).mean()),
             }
             for s in stats
@@ -208,7 +208,7 @@ def _prepare_sensitivity(posterior_subdir: str):
 
     theta_orig = np.asarray(samples["theta"]).mean(axis=0)
     kappa = np.array([
-        float(np.asarray(samples[f"beta__{s.name}"]).mean() / np.asarray(samples[f"omega__{s.name}"]).mean())
+        float(np.asarray(samples[f"a__{s.name}"]).mean() / np.asarray(samples[f"omega__{s.name}"]).mean())
         for s in stats
     ])
     prior_log_s = float(np.log(compute_prior_scale(stats) / np.sqrt(2)))

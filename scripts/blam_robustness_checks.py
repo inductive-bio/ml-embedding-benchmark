@@ -205,7 +205,7 @@ def endpoint_ecfp_comparison(stats, samples, u_by_endpoint, baseline=BASELINE):
     for stat in stats:
         if baseline not in stat.embeddings:
             continue
-        beta_e = np.asarray(samples[f"beta__{stat.name}"])
+        a_e = np.asarray(samples[f"a__{stat.name}"])
         u_e = u_by_endpoint[stat.name]
         baseline_col = stat.embeddings.index(baseline)
         theta_baseline = stat.theta_samples[:, baseline_col]
@@ -213,7 +213,7 @@ def endpoint_ecfp_comparison(stats, samples, u_by_endpoint, baseline=BASELINE):
         for col, embedding in enumerate(stat.embeddings):
             if embedding == baseline:
                 continue
-            d = beta_e * (stat.theta_samples[:, col] - theta_baseline) + (u_baseline - u_e[:, col])
+            d = a_e * (stat.theta_samples[:, col] - theta_baseline) + (u_baseline - u_e[:, col])
             rows.append({
                 "endpoint": stat.name,
                 "embedding": embedding,
@@ -354,9 +354,9 @@ def cmd_heteroscedastic(args):
     rows = []
     for stat in posterior["stats"]:
         mu_e = np.asarray(samples[f"mu__{stat.name}"]).mean()
-        beta_e = np.asarray(samples[f"beta__{stat.name}"]).mean()
+        a_e = np.asarray(samples[f"a__{stat.name}"]).mean()
         theta_mean_e = stat.theta_samples.mean(axis=0)
-        fitted = mu_e - beta_e * theta_mean_e
+        fitted = mu_e - a_e * theta_mean_e
         resid = stat.y_hat - fitted
         for j, embedding in enumerate(stat.embeddings):
             rows.append({
@@ -426,7 +426,7 @@ def cmd_correlation(args):
     empirical = Z.corr()
 
     endpoints = list(Y.columns)
-    a = np.array([np.asarray(samples[f"beta__{e}"]).mean() for e in endpoints])
+    a = np.array([np.asarray(samples[f"a__{e}"]).mean() for e in endpoints])
     omega = np.array([np.asarray(samples[f"omega__{e}"]).mean() for e in endpoints])
     denom = np.sqrt(a**2 + omega**2)
     fitted = pd.DataFrame(np.outer(a, a) / np.outer(denom, denom), index=endpoints, columns=endpoints)
@@ -527,20 +527,20 @@ def cmd_omega_extension(args):
     def model():
         z = numpyro.sample("z", dist.Normal(0.0, 1.0).expand([n_embeddings - 1]).to_event(1))
         theta = numpyro.deterministic("theta", Q @ z)
-        sigma_beta = numpyro.sample("sigma_beta", dist.LogNormal(prior_log_s, 0.5))
+        sigma_a = numpyro.sample("sigma_a", dist.LogNormal(prior_log_s, 0.5))
         sigma_omega = numpyro.sample("sigma_omega", dist.LogNormal(prior_log_s, 0.5))
         gamma = numpyro.sample("gamma", dist.Normal(0.0, 1.0))
 
         for stat in stats:
             idx = jnp.array([emb_index[e] for e in stat.embeddings])
             mu_e = numpyro.sample(f"mu__{stat.name}", dist.Normal(float(np.mean(stat.y_hat)), 1.0))
-            beta_tilde = numpyro.sample(f"beta_tilde__{stat.name}", dist.HalfNormal(1.0))
+            a_tilde = numpyro.sample(f"a_tilde__{stat.name}", dist.HalfNormal(1.0))
             omega_tilde = numpyro.sample(f"omega_tilde__{stat.name}", dist.HalfNormal(1.0))
-            beta_e = numpyro.deterministic(f"beta__{stat.name}", sigma_beta * beta_tilde)
+            a_e = numpyro.deterministic(f"a__{stat.name}", sigma_a * a_tilde)
             omega_e = numpyro.deterministic(f"omega__{stat.name}", sigma_omega * omega_tilde)
 
             theta_e = theta[idx]
-            mean_e = mu_e - beta_e * theta_e
+            mean_e = mu_e - a_e * theta_e
             omega_ie = omega_e * jnp.exp(-gamma * theta_e)
             cov_e = jnp.diag(omega_ie**2) + jnp.array(stat.V)
             numpyro.sample(
@@ -579,7 +579,7 @@ def zscore_and_kappa(stats, samples):
     z_cols, kappa = {}, {}
     for stat in stats:
         mu_e = float(np.asarray(samples[f"mu__{stat.name}"]).mean())
-        a_e = float(np.asarray(samples[f"beta__{stat.name}"]).mean())
+        a_e = float(np.asarray(samples[f"a__{stat.name}"]).mean())
         omega_e = float(np.asarray(samples[f"omega__{stat.name}"]).mean())
         theta_i = stat.theta_samples.mean(axis=0)
 
@@ -635,7 +635,7 @@ def simulate_null_stats(stats, global_embeddings, samples, rng):
     sim_stats = []
     for stat in stats:
         mu_e = float(np.asarray(samples[f"mu__{stat.name}"]).mean())
-        a_e = float(np.asarray(samples[f"beta__{stat.name}"]).mean())
+        a_e = float(np.asarray(samples[f"a__{stat.name}"]).mean())
         omega_e = float(np.asarray(samples[f"omega__{stat.name}"]).mean())
         idx = [emb_index[e] for e in stat.embeddings]
         mean_e = mu_e - a_e * theta_hat[idx]
@@ -740,20 +740,20 @@ def build_correlated_model(global_embeddings, stats, prior_log_s, rho):
     def model():
         z = numpyro.sample("z", dist.Normal(0.0, 1.0).expand([n_embeddings - 1]).to_event(1))
         theta = numpyro.deterministic("theta", Q @ z)
-        sigma_beta = numpyro.sample("sigma_beta", dist.LogNormal(prior_log_s, 0.5))
+        sigma_a = numpyro.sample("sigma_a", dist.LogNormal(prior_log_s, 0.5))
         sigma_omega = numpyro.sample("sigma_omega", dist.LogNormal(prior_log_s, 0.5))
         xi = numpyro.sample("xi", dist.Normal(0.0, 1.0).expand([n_embeddings]).to_event(1))
 
         for stat in stats:
             idx = jnp.array([emb_index[e] for e in stat.embeddings])
             mu_e = numpyro.sample(f"mu__{stat.name}", dist.Normal(float(np.mean(stat.y_hat)), 1.0))
-            beta_tilde = numpyro.sample(f"beta_tilde__{stat.name}", dist.HalfNormal(1.0))
+            a_tilde = numpyro.sample(f"a_tilde__{stat.name}", dist.HalfNormal(1.0))
             omega_tilde = numpyro.sample(f"omega_tilde__{stat.name}", dist.HalfNormal(1.0))
-            beta_e = numpyro.deterministic(f"beta__{stat.name}", sigma_beta * beta_tilde)
+            a_e = numpyro.deterministic(f"a__{stat.name}", sigma_a * a_tilde)
             omega_e = numpyro.deterministic(f"omega__{stat.name}", sigma_omega * omega_tilde)
 
             theta_e = theta[idx]
-            mean_e = mu_e - beta_e * theta_e + omega_e * sqrt_rho * xi[idx]
+            mean_e = mu_e - a_e * theta_e + omega_e * sqrt_rho * xi[idx]
             cov_e = omega_e**2 * (1.0 - rho) * jnp.eye(len(stat.embeddings)) + jnp.array(stat.V)
             numpyro.sample(
                 f"y__{stat.name}",
@@ -774,11 +774,11 @@ def new_endpoint_prob_pair(samples, global_embeddings, emb_a, emb_b, seed):
     delta = theta[:, ia] - theta[:, ib]
 
     rng = np.random.default_rng(seed)
-    sigma_beta = np.asarray(samples["sigma_beta"])
+    sigma_a = np.asarray(samples["sigma_a"])
     sigma_omega = np.asarray(samples["sigma_omega"])
-    beta_new = np.abs(rng.normal(0.0, sigma_beta))
+    a_new = np.abs(rng.normal(0.0, sigma_a))
     omega_new = np.abs(rng.normal(0.0, sigma_omega))
-    prob = float(ndtr(beta_new * delta / (np.sqrt(2) * omega_new)).mean())
+    prob = float(ndtr(a_new * delta / (np.sqrt(2) * omega_new)).mean())
     return prob, delta
 
 
@@ -799,7 +799,7 @@ def cmd_endpoint_psi_sensitivity(args):
     # kappa)^2/sum(kappa^2) in [1, E] by Cauchy-Schwarz -- so VIF(1) = wbar is
     # the rho->1 ceiling, reportable without a refit.
     kappa = np.array([
-        float(np.asarray(samples[f"beta__{s.name}"]).mean() / np.asarray(samples[f"omega__{s.name}"]).mean())
+        float(np.asarray(samples[f"a__{s.name}"]).mean() / np.asarray(samples[f"omega__{s.name}"]).mean())
         for s in stats
     ])
     w_bar = float(kappa.sum() ** 2 / (kappa**2).sum())

@@ -14,12 +14,12 @@ Pipeline:
      touches per-compound data again.
   3. Fit the hierarchical model via NUTS (numpyro): global latent ability
      theta (sum-to-zero across all embeddings), per-endpoint difficulty mu_e
-     and discrimination beta_e (a_e in the paper), and per-endpoint
-     specialization scale omega_e.
+     and discrimination a_e, and per-endpoint specialization scale
+     omega_e.
   4. u_ie (specialization) is never sampled directly -- the likelihood (Eq. 40)
      marginalizes it into omega_e^2*I + V_e. It's recovered afterwards by
      drawing from its posterior conditional given r_e = y_hat_e - mu_e*1 +
-     beta_e*theta_e, one draw per posterior sample.
+     a_e*theta_e, one draw per posterior sample.
 
 Usage:
     python scripts/blam_analysis.py
@@ -45,7 +45,7 @@ from scipy.linalg import helmert
 log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 DEFAULT_METHODS = ("rf", "ridge", "knn", "tabicl", "tabpfn")
-# Floor for the noise-corrected sample variance (paper App. B.6, Eq. 55) -- keeps sigma_beta/sigma_omega's LogNormal location
+# Floor for the noise-corrected sample variance (paper App. B.6, Eq. 55) -- keeps sigma_a/sigma_omega's LogNormal location
 # finite if measurement noise alone would explain all of s_e^2.
 EPSILON_0 = 1e-6
 
@@ -207,7 +207,7 @@ def load_endpoint_stats(
             log.warning(f"'{name}': no embedding has all of {methods} -- skipping endpoint")
             continue
         if A.shape[1] < 2:
-            # A single embedding can't identify beta_e/theta separately from
+            # A single embedding can't identify a_e/theta separately from
             # mu_e for this endpoint -- it contributes nothing to the model.
             log.warning(f"'{name}': only {A.shape[1]} embedding(s) with full method coverage -- skipping endpoint")
             continue
@@ -223,7 +223,7 @@ def load_endpoint_stats(
 def compute_prior_scale(stats: list) -> float:
     """s-hat from the paper's App. B.6: a noise-corrected, cross-endpoint
     median spread of log-MAE, used as the LogNormal location for
-    sigma_beta/sigma_omega."""
+    sigma_a/sigma_omega."""
     s_tilde = []
     for stat in stats:
         s_e2 = np.var(stat.y_hat, ddof=1)
@@ -248,19 +248,19 @@ def build_model(global_embeddings: list, stats: list, prior_log_s: float):
         z = numpyro.sample("z", dist.Normal(0.0, 1.0).expand([n_embeddings - 1]).to_event(1))
         theta = numpyro.deterministic("theta", Q @ z)
 
-        sigma_beta = numpyro.sample("sigma_beta", dist.LogNormal(prior_log_s, 0.5))
+        sigma_a = numpyro.sample("sigma_a", dist.LogNormal(prior_log_s, 0.5))
         sigma_omega = numpyro.sample("sigma_omega", dist.LogNormal(prior_log_s, 0.5))
 
         for stat in stats:
             idx = jnp.array([emb_index[e] for e in stat.embeddings])
             mu_e = numpyro.sample(f"mu__{stat.name}", dist.Normal(float(np.mean(stat.y_hat)), 1.0))
-            beta_tilde = numpyro.sample(f"beta_tilde__{stat.name}", dist.HalfNormal(1.0))
+            a_tilde = numpyro.sample(f"a_tilde__{stat.name}", dist.HalfNormal(1.0))
             omega_tilde = numpyro.sample(f"omega_tilde__{stat.name}", dist.HalfNormal(1.0))
-            beta_e = numpyro.deterministic(f"beta__{stat.name}", sigma_beta * beta_tilde)
+            a_e = numpyro.deterministic(f"a__{stat.name}", sigma_a * a_tilde)
             omega_e = numpyro.deterministic(f"omega__{stat.name}", sigma_omega * omega_tilde)
 
             theta_e = theta[idx]
-            mean_e = mu_e - beta_e * theta_e
+            mean_e = mu_e - a_e * theta_e
             cov_e = omega_e**2 * jnp.eye(len(stat.embeddings)) + jnp.array(stat.V)
             numpyro.sample(
                 f"y__{stat.name}",
@@ -336,11 +336,11 @@ def compute_specialization(samples: dict, stats: list, seed: int = 0) -> dict:
     u_by_endpoint = {}
     for stat in stats:
         mu_e = np.asarray(samples[f"mu__{stat.name}"])  # (S,)
-        beta_e = np.asarray(samples[f"beta__{stat.name}"])  # (S,)
+        a_e = np.asarray(samples[f"a__{stat.name}"])  # (S,)
         omega_e = np.asarray(samples[f"omega__{stat.name}"])  # (S,)
         theta_e = stat.theta_samples  # (S, n_e), attached by caller
 
-        r_e = stat.y_hat[None, :] - mu_e[:, None] + beta_e[:, None] * theta_e  # (S, n_e)
+        r_e = stat.y_hat[None, :] - mu_e[:, None] + a_e[:, None] * theta_e  # (S, n_e)
 
         lam, Q = np.linalg.eigh(stat.V)  # V_e = Q @ diag(lam) @ Q.T
         lam = np.clip(lam, 0.0, None)
@@ -378,14 +378,14 @@ def summarize(global_embeddings: list, samples: dict, stats: list, u_by_endpoint
     endpoint_rows = []
     for stat in stats:
         mu = np.asarray(samples[f"mu__{stat.name}"])
-        beta = np.asarray(samples[f"beta__{stat.name}"])
+        a = np.asarray(samples[f"a__{stat.name}"])
         omega = np.asarray(samples[f"omega__{stat.name}"])
         endpoint_rows.append({
             "endpoint": stat.name,
             "mu_mean": mu.mean(),
             "mu_std": mu.std(),
-            "beta_mean": beta.mean(),
-            "beta_std": beta.std(),
+            "a_mean": a.mean(),
+            "a_std": a.std(),
             "omega_mean": omega.mean(),
             "omega_std": omega.std(),
             "n_compounds": stat.n_compounds,

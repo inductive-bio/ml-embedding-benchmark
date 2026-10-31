@@ -28,11 +28,11 @@ class _FakeStat:
 
 
 def _samples_and_stat(n_e, S, omega, V, r):
-    """mu_e=0, beta_e=1, y_hat_e=0 makes r_{.e} == theta_samples exactly, so
+    """mu_e=0, a_e=1, y_hat_e=0 makes r_{.e} == theta_samples exactly, so
     callers can inject an arbitrary r_{.e} array `r` of shape (S, n_e)."""
     stat = _FakeStat("e", np.zeros(n_e), V)
     stat.theta_samples = r
-    samples = {"mu__e": np.zeros(S), "beta__e": np.ones(S), "omega__e": np.full(S, omega)}
+    samples = {"mu__e": np.zeros(S), "a__e": np.ones(S), "omega__e": np.full(S, omega)}
     return samples, stat
 
 
