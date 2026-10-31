@@ -13,7 +13,10 @@ mkdir -p checkpoints
 
 # The CheMeleon authors' published encoder weights (Burns et al. 2025).
 if [ ! -f "./checkpoints/chemeleon_mp.pt" ]; then
-    curl -fL -o ./checkpoints/chemeleon_mp.pt https://zenodo.org/records/15460715/files/chemeleon_mp.pt
+    # Download to a temp name so an interrupted transfer can't leave a
+    # truncated file that the existence check above would then accept.
+    curl -fL -o ./checkpoints/chemeleon_mp.pt.part https://zenodo.org/records/15460715/files/chemeleon_mp.pt \
+        && mv ./checkpoints/chemeleon_mp.pt.part ./checkpoints/chemeleon_mp.pt
 fi
 
 export HYDRA_EXPERIMENT=chemeleon
