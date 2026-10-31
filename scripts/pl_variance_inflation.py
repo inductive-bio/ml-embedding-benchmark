@@ -1,5 +1,4 @@
-"""Monte Carlo check of the variance inflation derived in docs/bayesian_model.md
-("Variance Inflation" sections): the Bradley-Terry pseudo-likelihood understates
+"""Monte Carlo check of the variance inflation derived in App. A of the paper: the Bradley-Terry pseudo-likelihood understates
 Var(beta_hat) by a factor of (M+1)/3, M the number of models being compared.
 
 Data-generating process: each dataset produces one Plackett-Luce ranking of all M models

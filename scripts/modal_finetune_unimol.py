@@ -1,5 +1,5 @@
 """Fine-tune a Uni-Mol checkpoint end-to-end on Modal, one container per
-(dataset, model variant) -- see docs/finetuning_plan.md's Tier 1 pilot step.
+(dataset, model variant).
 
     modal run scripts/modal_finetune_unimol.py --datasets reg_openadmet_pxr_pEC50
     modal run scripts/modal_finetune_unimol.py --model-names unimolv1,unimolv2
@@ -125,8 +125,7 @@ def _run_finetune_unimol(
     # Written to the Volume rather than relied on via `print()` -- a
     # tqdm-heavy subprocess (unimol_tools logs progress bars for every batch)
     # can flood/truncate Modal's own captured log before the real traceback
-    # ever shows up there (same issue docs/openadmet_migration_status.md
-    # hit with ChemFM's embedding run).
+    # ever shows up there.
     log_name = f"{model_name}_{run_tag}" if run_tag else model_name
     log_path = log_dir / f"{log_name}.log"
     log_path.write_text(f"=== stdout ===\n{result.stdout}\n=== stderr ===\n{result.stderr}\n")

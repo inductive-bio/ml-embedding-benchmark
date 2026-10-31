@@ -1,5 +1,5 @@
 """Run scripts/blam_robustness_checks.py's endpoint_psi and
-endpoint_psi_sensitivity tests (docs/draft.tex app:endpoint-correlation) on
+endpoint_psi_sensitivity tests (endpoint residual correlation) on
 Modal, against an already-fitted posterior.joblib already on the Volume (put
 there by scripts/modal_blam_analysis.py's `finalize` stage, e.g.
 blam_v2_monroe/posterior.joblib).

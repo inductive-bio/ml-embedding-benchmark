@@ -1,24 +1,21 @@
 """Train a chemprop MPNN end-to-end (from scratch, no pretraining) on one
 OpenADMET endpoint and score it on the same held-out test split the
-frozen-embedding path uses. See docs/e2e_chemprop_chemeleon_plan.md.
+frozen-embedding path uses.
 
 Two feature variants, both single-task (this repo's 17 endpoints are already
-split one-per-file, unlike ensemble-aware-admet's 9-task ExpansionRx setup --
-so there's no missing-label masking to do):
+split one-per-file, so there's no missing-label masking to do):
 
 - `--features 2d`: chemprop's own RDKit-2D featurizer (217-dim) as extra
-  per-molecule features (`x_d`), matching ensemble-aware-admet's
-  baselines/chemprop_baseline.py ("chemprop-2d").
+  per-molecule features (`x_d`) ("chemprop-2d").
 - `--features 3d`: RDKit-3D descriptors (912-dim, model_wrappers/descriptors/
   rdkit_3d.py::compute_rdkit_3d) computed from the lowest-energy conformer in
   this repo's own precomputed cache (data/conformers/<challenge>_mmff94s.joblib
-  -- see scripts/modal_generate_conformers.py / modal_optimize_conformers.py),
-  matching ensemble-aware-admet's src/models/chemprop_3d.py ("chemprop-3d").
+  -- see scripts/modal_generate_conformers.py / modal_optimize_conformers.py)
+  ("chemprop-3d").
   Molecules missing a usable cached conformer are dropped (logged).
 
 Must be run with this wrapper's own venv (model_wrappers/chemprop/venv,
-Python 3.11, chemprop==2.2.4 installed) -- see docs/openadmet_migration_status.md's
-"Local run recipe" for how to build it, substituting this wrapper's directory.
+Python 3.11, chemprop==2.2.4 installed by init.sh).
 
 Usage:
     python model_wrappers/chemprop/finetune.py --dataset reg_openadmet_polaris_admet_KSOL --features 2d
@@ -65,9 +62,7 @@ CHALLENGE_PATTERNS = [
     ("reg_openadmet_pxr_", "pxr"),
 ]
 
-# Starting hyperparameters ported from ensemble-aware-admet's own configs
-# (baselines/configs/chemprop_2d_small.yaml, configs/chemprop_3d.yaml) -- not
-# tuned here, see docs/e2e_chemprop_chemeleon_plan.md.
+# Fixed hyperparameters, not tuned per endpoint.
 DEFAULT_HPARAMS = {
     "2d": dict(
         mpnn_hidden_dim=256, mpnn_bias=False, mpnn_depth=3, mpnn_dropout=0.2, mpnn_activation="leakyrelu",
@@ -232,9 +227,7 @@ def run_finetune(
         raise ValueError(f"Unknown --features '{features}'")
 
     # RDKit-2D/3D descriptors can be wildly non-Gaussian (RDKit2DFeaturizer's
-    # own warning recommends against StandardScaler); RobustScaler + a clip
-    # matches the recipe ensemble-aware-admet's chemprop_baseline.py/
-    # chemprop_3d.py already use.
+    # own warning recommends against StandardScaler), hence RobustScaler + a clip.
     scaler = RobustScaler().fit(train_x_d)
     train_x_d = np.clip(scaler.transform(train_x_d), -10, 10).astype(np.float32)
     val_x_d = np.clip(scaler.transform(val_x_d), -10, 10).astype(np.float32)

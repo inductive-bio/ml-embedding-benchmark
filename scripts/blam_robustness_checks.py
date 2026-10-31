@@ -9,7 +9,7 @@ copy of data/blam_v2_monroe's posterior.joblib etc., see data/blam_tests/raw).
   4. loglink:          refit on log(y_hat_ie) with V_e delta-mapped by
                         D^-1 V_e D^-1, D = diag(y_hat_.e); Kendall's tau vs
                         the current theta ranking.
-  5. endpoint_psi:      docs/draft.tex app:endpoint-correlation's Psi_hat
+  5. endpoint_psi:      Psi_hat, the cross-endpoint correlation
                         (correlation of the standardized residual z_ie),
                         lambda_1(Psi_hat)/VIF/E_eff/sqrt(VIF), max |Psi_hat_ee'|
                         overall and within a priori related endpoint blocks,
@@ -564,7 +564,7 @@ def cmd_omega_extension(args):
 
 
 # ---------------------------------------------------------------------------
-# Test 5: endpoint residual correlation Psi_hat (docs/draft.tex app:endpoint-correlation)
+# Test 5: endpoint residual correlation Psi_hat
 # ---------------------------------------------------------------------------
 
 def zscore_and_kappa(stats, samples):

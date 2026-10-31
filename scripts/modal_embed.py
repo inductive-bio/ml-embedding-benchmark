@@ -31,8 +31,8 @@ on the Volume, re-running is safe and just fills in whatever's missing.
 Explicitly excluded, two different reasons:
 - `cddd`, `chemformer`, `simson`, and the `huggingface` wrapper's
   `selformer`/`selformer_lite` model variants: need an interactive Google
-  Drive/Box/Figshare download a container can't do non-interactively (see
-  docs/data_sources/ and the approved plan for this work). huggingface's
+  Drive/Box/Figshare download a container can't do non-interactively.
+  huggingface's
   other ~11 variants pull from the HF Hub at runtime and are included.
 - `graphfp`, `graphmvp`, `mol-r`, `molbert`: pinned to exact old
   torch/dgl/transformers versions with no wheel for Python >=3.10, which

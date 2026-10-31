@@ -1,12 +1,10 @@
 """Fine-tune a pretrained Chemeleon encoder end-to-end (encoder + a fresh
-single-task regression head, no freezing) on one OpenADMET endpoint. See
-docs/e2e_chemprop_chemeleon_plan.md.
+single-task regression head, no freezing) on one OpenADMET endpoint.
 
-Reuses the same 7 pretrained checkpoints wrapper.py loads for frozen
+Reuses the same pretrained checkpoint wrapper.py loads for frozen
 embeddings -- unlike wrapper.py, which only ever calls .fingerprint() on a
-frozen encoder, this drops the pretraining-time descriptor-prediction head
-and attaches a fresh RegressionFFN(n_tasks=1), then trains the whole model
-(encoder + head) jointly on ADMET labels.
+frozen encoder, this attaches a fresh RegressionFFN(n_tasks=1) and trains the
+whole model (encoder + head) jointly on ADMET labels.
 
 Must be run with this wrapper's own venv (model_wrappers/chemeleon/venv,
 Python 3.11, chemprop==2.2.4 + checkpoints already installed by init.sh).
@@ -40,16 +38,9 @@ from chemprop.nn import BondMessagePassing, MeanAggregation, RegressionFFN, Unsc
 log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # Local checkpoint filenames, as downloaded by init.sh -- kept in sync with
-# wrapper.py's own _VARIANTS by hand (same convention as scripts/modal_embed_
-# chemeleon.py's CHECKPOINTS dict).
+# wrapper.py's own _VARIANTS by hand.
 _VARIANTS = {
     "chemeleon_original": "chemeleon_mp.pt",
-    "chemeleon_pubchem_3d_mean": "chemeleon_pubchem_3d_mean.ckpt",
-    "chemeleon_pubchem_3d_boltzmann": "chemeleon_pubchem_3d_boltzmann.ckpt",
-    "chemeleon_pubchem_both_mean": "chemeleon_pubchem_both_mean.ckpt",
-    "chemeleon_pubchem_both_boltzmann": "chemeleon_pubchem_both_boltzmann.ckpt",
-    "chemeleon_chembl3d_both_boltzmann": "chemeleon_chembl3d_both_boltzmann.ckpt",
-    "chemeleon_geomdrugs_both_boltzmann": "chemeleon_geomdrugs_both_boltzmann.ckpt",
 }
 
 # Matches the CheMeleon authors' fine-tuning script
@@ -63,14 +54,7 @@ DEFAULT_HPARAMS = dict(
 
 
 def _load_pretrained_encoder(checkpoint_path: str):
-    """Same dispatch as wrapper.py::_load_mpnn, but returns just the encoder
-    (no aggregation/predictor) since a fresh single-task head gets attached
-    here.
-    """
     raw = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    if "pytorch-lightning_version" in raw:
-        pretrained = MPNN.load_from_checkpoint(checkpoint_path, map_location="cpu")
-        return pretrained.message_passing
     mp = BondMessagePassing(**raw["hyper_parameters"])
     mp.load_state_dict(raw["state_dict"])
     return mp
@@ -191,7 +175,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset", required=True, help="Dataset config name, e.g. 'reg_openadmet_polaris_admet_KSOL' (config/dataset/<name>.yaml)")
     parser.add_argument("--model-name", required=True, choices=sorted(_VARIANTS))
-    parser.add_argument("--checkpoint-path", default=None, help="Override the default model_wrappers/chemeleon/checkpoints/<file> path (used by the Modal script, which symlinks checkpoints from a separate volume)")
+    parser.add_argument("--checkpoint-path", default=None, help="Override the default model_wrappers/chemeleon/checkpoints/<file> path (used by the Modal script)")
     parser.add_argument("--config-dir", default="config/dataset")
     parser.add_argument("--prepared-dir", default="data/prepared")
     parser.add_argument("--checkpoint-dir", default="data/finetune_checkpoints")

@@ -6,8 +6,7 @@
 
 Monroe (blazejba/Monroe) is a GRIT graph transformer pretrained on PM6 +
 PCBA, genuinely 3D at inference (RDKit ETKDG+MMFF94s conformer positions feed
-the encoder, same category as unimol -- see docs/embedding_expansion_plan.md's
-"true-3D GNN candidates" section). Unlike minimol/KERMT, its encoder
+the encoder, same category as unimol). Unlike minimol/KERMT, its encoder
 (monroe/model/grit.py) only calls torch_geometric.utils.scatter -- no
 torch-scatter/torch-sparse/torch-cluster compiled extensions, so there's no
 exact (torch, cuda) wheel combo to pin against and the image is a plain

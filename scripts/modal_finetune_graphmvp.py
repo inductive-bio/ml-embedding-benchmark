@@ -1,5 +1,4 @@
-"""Fine-tune GraphMVP end-to-end on Modal, one CPU container per dataset --
-see docs/finetuning_plan.md's Tier 2 rollout.
+"""Fine-tune GraphMVP end-to-end on Modal, one CPU container per dataset.
 
     modal run scripts/modal_finetune_graphmvp.py --datasets reg_openadmet_pxr_pEC50
     modal run scripts/modal_finetune_graphmvp.py

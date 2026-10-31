@@ -30,7 +30,7 @@ To add a custom model, define a new wrapper class inside `wrapper.py`. The wrapp
 Finally, your `wrapper.py` file should also contain a function `get_embedder()` that returns an instance of your wrapper class. This function is used to initialize the model in the embedding script. It can be as simple as:
 
 ```python
-def get_embedder(name, **_kwargs):  # <-- **kwargs are important, as this function is called with other parameters, such as task (classification/regression)
+def get_embedder(name, **_kwargs):  # <-- **kwargs are important, as this function is called with other parameters, such as task
     if 'clamp' in name.lower():
         return CLAMPEmbedder()
     raise ValueError(f"Unknown embedder {name}")

@@ -5,8 +5,8 @@ Writes two tiers into ./data/:
   data/processed/<source>/*.csv  one file per regression endpoint, columns:
                                   molecule_id, smiles, value, split
 
-See docs/data_sources/*.md for the source-by-source rationale behind the choices
-made here (which HF/Polaris repo to use, which transform, which exclusions).
+See docs/datasets.md for the source-by-source rationale behind the choices made
+here (which HF/Polaris repo to use, which transform, which exclusions).
 """
 
 import json
@@ -155,8 +155,7 @@ def fetch_polaris():
         df = admet_df.copy()
         if col != "LogD":
             # Match the official evaluation's clip_and_log_transform (every ADMET
-            # target except LogD, which is already log-scale) -- see
-            # docs/data_sources/polaris_antiviral.md §5.
+            # target except LogD, which is already log-scale).
             df[col] = np.log10(df[col] + 1)
         if bad:
             # Exclusions were curated against the *test*-set array of the original
@@ -216,7 +215,7 @@ def fetch_pxr():
 
     full = pd.concat([train, test], ignore_index=True)
     save_endpoint(full, "pxr", "pEC50", "Molecule Name", "SMILES", "pEC50", "split")
-    # Emax deliberately skipped by default -- see docs/data_sources/pxr.md §2
+    # Emax is not used as an endpoint.
 
 
 def main():

@@ -1,6 +1,5 @@
 """Fine-tune SELFormer (or SELFormer-Lite) end-to-end on Modal, one container
-per (dataset, model variant) -- see docs/finetuning_plan.md's Tier 1 pilot
-step. Mirrors scripts/modal_finetune_unimol.py's structure; image mirrors
+per (dataset, model variant). Mirrors scripts/modal_finetune_unimol.py's structure; image mirrors
 scripts/modal_embed_selformer.py's (same wrapper, same checkpoint layout).
 
     modal run scripts/modal_finetune_selformer.py --datasets reg_openadmet_pxr_pEC50

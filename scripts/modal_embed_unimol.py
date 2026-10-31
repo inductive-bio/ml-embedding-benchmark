@@ -84,8 +84,7 @@ def build_image() -> modal.Image:
         .add_local_dir(PROJECT_ROOT / "model_wrappers" / "unimol", remote_path=wrapper_dir, copy=True)
         .run_commands(f"cd {wrapper_dir} && INSTALL_DEP=true bash -e init.sh")
         # init.sh's own `pip install unimol_tools --upgrade` pulls numpy back
-        # past 2.0 regardless of the pin above -- re-assert it, same as the
-        # local run recipe in docs/openadmet_migration_status.md does. Without
+        # past 2.0 regardless of the pin above -- re-assert it. Without
         # this, pandas (built against numpy 1.x) throws "numpy.dtype size
         # changed, may indicate binary incompatibility" at import time.
         .pip_install("numpy<2.0.0")

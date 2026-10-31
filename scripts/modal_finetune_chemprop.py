@@ -1,6 +1,5 @@
 """Train a chemprop MPNN end-to-end (2D and/or 3D features, no pretraining)
-on Modal, one container per (dataset, features) -- see
-docs/e2e_chemprop_chemeleon_plan.md.
+on Modal, one container per (dataset, features).
 
     modal run scripts/modal_finetune_chemprop.py --datasets reg_openadmet_polaris_admet_KSOL --features 2d
     modal run scripts/modal_finetune_chemprop.py --features 2d,3d
@@ -164,8 +163,7 @@ def main(
 ):
     """--datasets: comma-separated dataset names (default: all 17).
     --features: comma-separated feature variant(s), '2d' and/or '3d' (default: '2d' only).
-    --epochs: max epochs, early-stopped on val_loss (default 1000, matching
-    ensemble-aware-admet's own train.sh).
+    --epochs: max epochs, early-stopped on val_loss (default 1000).
     --batch-size / --patience: see model_wrappers/chemprop/finetune.py defaults.
     --run-tag: optional label (e.g. 'epochs300') for a hyperparameter-sweep
     run, so it's saved alongside the default config's result under

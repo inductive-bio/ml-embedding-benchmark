@@ -1,5 +1,5 @@
 """Shared result scoring/saving for end-to-end fine-tuning, used by every
-model_wrappers/<name>/finetune.py -- see docs/finetuning_plan.md.
+model_wrappers/<name>/finetune.py.
 """
 
 from __future__ import annotations

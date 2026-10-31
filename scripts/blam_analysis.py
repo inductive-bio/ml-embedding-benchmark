@@ -1,5 +1,5 @@
 """Bayesian latent-ability model (BLAM) for ranking embeddings across OpenADMET
-endpoints, per docs/bayesian_model.md.
+endpoints, as described in Sec. 3.3 and App. B of the paper.
 
 Pipeline:
   1. Per (endpoint, embedding), take the |error| of whichever head (rf/ridge/
@@ -7,16 +7,16 @@ Pipeline:
      score rather than test error avoids a winner's-curse leak. An embedding
      is included only if every head finished for that endpoint.
   2. Union those per-embedding series into one compounds x embeddings error
-     matrix A_e per endpoint (doc's Step 1; NaN where an embedding has no
+     matrix A_e per endpoint (App. B.5 Step 1; NaN where an embedding has no
      observation for a compound, since embed-time failures drop different
      compounds per embedding). A_e is the sufficient statistic -- y_hat_e
      (Step 2) and V_e (Step 3) are computed from it, and nothing downstream
      touches per-compound data again.
-  3. Fit the hierarchical model from the doc via NUTS (numpyro): global latent
-     ability theta (sum-to-zero across all embeddings), per-endpoint
-     difficulty mu_e and discrimination beta_e, and per-endpoint specialization
-     scale omega_e.
-  4. u_ie (specialization) is never sampled directly -- Step 4 of the doc
+  3. Fit the hierarchical model via NUTS (numpyro): global latent ability
+     theta (sum-to-zero across all embeddings), per-endpoint difficulty mu_e
+     and discrimination beta_e (a_e in the paper), and per-endpoint
+     specialization scale omega_e.
+  4. u_ie (specialization) is never sampled directly -- the likelihood (Eq. 40)
      marginalizes it into omega_e^2*I + V_e. It's recovered afterwards by
      drawing from its posterior conditional given r_e = y_hat_e - mu_e*1 +
      beta_e*theta_e, one draw per posterior sample.
@@ -45,8 +45,7 @@ from scipy.linalg import helmert
 log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 DEFAULT_METHODS = ("rf", "ridge", "knn", "tabicl", "tabpfn")
-# Floor for the noise-corrected sample variance (docs/bayesian_model.md
-# "Priors" section) -- keeps sigma_beta/sigma_omega's LogNormal location
+# Floor for the noise-corrected sample variance (paper App. B.6, Eq. 55) -- keeps sigma_beta/sigma_omega's LogNormal location
 # finite if measurement noise alone would explain all of s_e^2.
 EPSILON_0 = 1e-6
 
@@ -157,7 +156,7 @@ def ensure_psd(V: np.ndarray, floor: float = 1e-10) -> np.ndarray:
 
 
 def compute_sampling_stats(A: pd.DataFrame):
-    """Steps 2-3 of docs/bayesian_model.md, generalized to a unioned (not
+    """Steps 2-3 of the paper's App. B.5, generalized to a unioned (not
     intersected) error matrix: y_hat_e (per-embedding mean) and V_e (sampling
     covariance of those means), using pairwise-complete compounds for each
     (i, j) entry since embeddings don't all share the same compound set."""
@@ -222,7 +221,7 @@ def load_endpoint_stats(
 
 
 def compute_prior_scale(stats: list) -> float:
-    """s from the doc's Priors section: a noise-corrected, cross-endpoint
+    """s-hat from the paper's App. B.6: a noise-corrected, cross-endpoint
     median spread of log-MAE, used as the LogNormal location for
     sigma_beta/sigma_omega."""
     s_tilde = []
@@ -242,7 +241,7 @@ def build_model(global_embeddings: list, stats: list, prior_log_s: float):
     emb_index = {name: i for i, name in enumerate(global_embeddings)}
     # theta ~ N(0, I - 11^T/M) via theta = Q @ z, z ~ N(0, I_{M-1}) -- Helmert
     # rows are an orthonormal basis for the subspace orthogonal to 1, so this
-    # gives the doc's sum-to-zero identifiability constraint for free.
+    # gives the sum-to-zero identifiability constraint (App. B.2) for free.
     Q = jnp.array(helmert(n_embeddings, full=False).T)
 
     def model():
@@ -316,7 +315,7 @@ def combine_chains(chain_samples: list) -> tuple:
 
 def compute_specialization(samples: dict, stats: list, seed: int = 0) -> dict:
     """Draws u_{.e}^(s) from its posterior conditional given r_{.e}^(s)
-    (docs/bayesian_model.md Step 4/5), one draw per posterior sample -- not
+    (paper Eq. 57), one draw per posterior sample -- not
     just the conditional mean.
 
     (u_{.e}, r_{.e}) are jointly Gaussian with Cov(u, r) = omega_e^2*I and

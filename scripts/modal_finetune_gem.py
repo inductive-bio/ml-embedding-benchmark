@@ -1,5 +1,4 @@
-"""Fine-tune GEM (GeoGNN) end-to-end on Modal, one container per dataset --
-see docs/finetuning_plan.md's Tier 1 pilot step.
+"""Fine-tune GEM (GeoGNN) end-to-end on Modal, one container per dataset.
 
     modal run scripts/modal_finetune_gem.py --datasets reg_openadmet_pxr_pEC50 --epochs 5
     modal run scripts/modal_finetune_gem.py

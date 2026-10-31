@@ -11,7 +11,7 @@ Six outputs:
     the ranked list one embedding at a time (top/best to bottom/worst) with
     that row highlighted -- embeds natively into tools like Google Slides.
   - A static bar chart (PNG, --compare-ecfp) of P(embedding > ECFP) per
-    docs/bayesian_model.md's delta_{i,ECFP} construction, with a two-sided
+    the paper's delta_{i,ECFP} construction (App. C.5), with a two-sided
     p-value analog for significance.
   - An animated GIF counterpart to that same chart (--compare-ecfp-gif),
     stepping through embeddings one at a time like --theta-gif.
@@ -139,7 +139,7 @@ def load_posterior(path: str) -> dict:
 
 def compute_mae_summary(posterior: dict) -> pd.DataFrame:
     """Raw per-(endpoint, embedding) MAE -- EndpointStat.y_hat is exactly this
-    (docs/bayesian_model.md Step 2's per-embedding mean |error|), computed
+    (the paper's App. B.5 Step 2 per-embedding mean |error|), computed
     before any Bayesian fitting. mae_se is the standard error of that mean,
     from V_e's diagonal (Step 3's sampling covariance)."""
     rows = []
@@ -156,8 +156,7 @@ def compute_mae_summary(posterior: dict) -> pd.DataFrame:
 
 
 def compute_ecfp_comparison(posterior: dict, baseline: str, seed: int = 0) -> pd.DataFrame:
-    """The doc's P(i > j) "parity with the original BBT paper" construction
-    (docs/bayesian_model.md, end of "Concrete Sketch of Steps"): for each
+    """The paper's new-endpoint P(i > j) construction (Eq. 8, App. C.5): for each
     posterior draw s, sample a hypothetical new endpoint's discrimination and
     specialization noise from that draw's hyper-parameters, then
 
@@ -215,8 +214,8 @@ def compute_endpoint_ecfp_comparison(posterior: dict, baseline: str) -> pd.DataF
     compute_specialization() already sampled u_ie/u_je from their posterior
     conditional given endpoint e's actual data (posterior["u_by_endpoint"]).
 
-    So this plugs those real per-draw u_ie/u_je into docs/bayesian_model.md's
-    margin decomposition (line 108):
+    So this plugs those real per-draw u_ie/u_je into the paper's margin
+    decomposition (Eq. 58):
 
         d_ije^(s) = beta_e^(s) * (theta_i^(s) - theta_j^(s)) + (u_je^(s) - u_ie^(s))
 
@@ -1288,12 +1287,12 @@ function updateHeader() {{
   document.getElementById("chart-subtitle").textContent = ep.synthetic
     ? "Per posterior draw, a fresh discrimination/noise (beta_new, omega_new) is sampled from the fitted "
       + "hyper-priors and P = Phi(beta_new * (theta_i - theta_" + DATA.baseline + ") / (sqrt(2) * omega_new)) -- "
-      + "this is the model's answer for a hypothetical endpoint it has never seen, per docs/bayesian_model.md's "
-      + "new-endpoint construction. Significance uses a two-sided p-value analog: p = 2 * min(P, 1-P), flagged "
+      + "this is the model's answer for a hypothetical endpoint it has never seen (the paper's Eq. 8). "
+      + " Significance uses a two-sided p-value analog: p = 2 * min(P, 1-P), flagged "
       + `at alpha = ${{DATA.alpha}}.`
     : "Per posterior draw, using this endpoint's own fitted theta/beta_e and already-recovered specialization "
       + "(u_ie), P = fraction of draws where i's actual margin over " + DATA.baseline + " on this endpoint's data "
-      + "is positive (docs/bayesian_model.md's d_ije = beta_e*(theta_i-theta_j) + (u_je-u_ie)) -- this reflects "
+      + "is positive (the paper's d_ije = beta_e*(theta_i-theta_j) + (u_je-u_ie)) -- this reflects "
       + "what was actually observed here, not a hypothetical rerun. Significance uses a two-sided p-value "
       + `analog: p = 2 * min(P, 1-P), flagged at alpha = ${{DATA.alpha}}.`;
   document.getElementById("legend-strong").textContent = `Significantly better (p < ${{DATA.alpha}})`;
@@ -1474,7 +1473,7 @@ def main():
     parser.add_argument("--theta-gif-frame-ms", type=int, default=900, help="Milliseconds each --theta-gif frame is shown")
     parser.add_argument(
         "--compare-ecfp", action="store_true",
-        help="Also write a bar chart of P(embedding > baseline) and a significance p-value, per docs/bayesian_model.md",
+        help="Also write a bar chart of P(embedding > baseline) and a significance p-value, per the paper's App. C.5",
     )
     parser.add_argument("--posterior-input", default="data/blam/posterior.joblib")
     parser.add_argument(

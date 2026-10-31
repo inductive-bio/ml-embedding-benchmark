@@ -28,8 +28,7 @@ FROM python:3.11-bullseye
 COPY --from=py37 /usr/local /opt/py37
 
 # numpy pinned to match the version already validated against this exact
-# torch/pytorch-lightning/transformers combo in the local pyenv venv (see
-# docs/openadmet_migration_status.md's "Local run recipe"); torch==1.4.0
+# torch/pytorch-lightning/transformers combo in the local pyenv venv; torch==1.4.0
 # fails to import against numpy>=1.22 (`numpy.core.multiarray failed to
 # import`, an ABI mismatch).
 RUN /opt/py37/bin/python3.7 -m venv /opt/molbert_venv \
