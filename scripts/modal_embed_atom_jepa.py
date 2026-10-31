@@ -2,7 +2,6 @@
 
     modal run scripts/modal_embed_atom_jepa.py
     modal run scripts/modal_embed_atom_jepa.py --datasets reg_openadmet_pxr_pEC50
-    modal run scripts/modal_embed_atom_jepa.py --modal-gpu T4
 
 Defaults to an A10G (Ampere) so the encoder runs in bf16 with cuEquivariance
 kernels (the `cu12` extra). Pre-Ampere GPUs (T4, V100) need
@@ -58,13 +57,16 @@ def build_image() -> modal.Image:
         # rdkit.Chem.Draw is imported at load time and needs X11 libs
         # debian_slim doesn't ship (same fix as modal_embed_unimol.py).
         .apt_install("libxrender1", "libxext6", "libsm6")
-        # atom-jepa requires PyTorch to be installed first.
-        .pip_install("torch")
+        # atom-jepa requires PyTorch first; same pin as init.sh.
+        .pip_install("torch==2.14.1")
         .pip_install(
             "hydra-core", "hydra-joblib-launcher", "joblib", "tqdm", "pandas",
             "numpy", "setuptools<81",
         )
-        .add_local_dir(PROJECT_ROOT / "model_wrappers" / "atom_jepa", remote_path=wrapper_dir, copy=True)
+        .add_local_dir(
+            PROJECT_ROOT / "model_wrappers" / "atom_jepa", remote_path=wrapper_dir, copy=True,
+            ignore=["venv", "venv/**"],
+        )
         .run_commands(f"cd {wrapper_dir} && ATOM_JEPA_EXTRAS=rdkit,cu12 INSTALL_DEP=true bash -e init.sh")
         # repo mount, after run_commands -- Modal forbids run_commands after a
         # non-copy add_local_dir.

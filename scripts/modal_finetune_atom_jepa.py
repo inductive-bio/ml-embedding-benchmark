@@ -50,12 +50,15 @@ def build_image() -> modal.Image:
     return (
         modal.Image.debian_slim(python_version="3.12")  # matches atom_jepa's .python-version
         .apt_install("libxrender1", "libxext6", "libsm6")
-        .pip_install("torch")  # atom-jepa requires PyTorch to be installed first
+        .pip_install("torch==2.14.1")  # atom-jepa requires PyTorch first; same pin as init.sh
         .pip_install(
             "joblib", "tqdm", "pandas", "numpy", "scipy", "scikit-learn",
             "pyyaml", "setuptools<81",
         )
-        .add_local_dir(PROJECT_ROOT / "model_wrappers" / "atom_jepa", remote_path=wrapper_dir, copy=True)
+        .add_local_dir(
+            PROJECT_ROOT / "model_wrappers" / "atom_jepa", remote_path=wrapper_dir, copy=True,
+            ignore=["venv", "venv/**"],
+        )
         .run_commands(f"cd {wrapper_dir} && ATOM_JEPA_EXTRAS=rdkit,cu12 INSTALL_DEP=true bash -e init.sh")
         .add_local_dir(PROJECT_ROOT / "src", remote_path="/project/src")
         .add_local_dir(PROJECT_ROOT / "config" / "dataset", remote_path="/project/config/dataset")
