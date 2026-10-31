@@ -12,8 +12,7 @@ wrapper's image first. This script only ever builds one image.
 
 Also split out from the main `huggingface` sweep (rather than just adding
 `selformer` back into its model glob) to avoid the unresolved GPU-memory issue
-that broke that sweep's other variants on Modal T4 (see docs/
-openadmet_migration_status.md) -- that sweep loads ~10 different models
+that broke that sweep's other variants on Modal T4 -- that sweep loads ~10 different models
 sequentially in one long-running process without releasing GPU memory between
 them. One container per dataset here means each container only ever loads
 these 2 (small) models, once, then exits -- structurally avoids the same

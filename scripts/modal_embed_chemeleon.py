@@ -1,19 +1,13 @@
 """Run embed.py on Modal for the `chemeleon` wrapper, one container per
-(model variant, dataset) pair -- 7 models x 17 datasets = 119 containers by
-default, for maximum fan-out (unlike modal_embed_sand.py, which runs all of a
-wrapper's variants inside one container per dataset).
+(model variant, dataset) pair, for maximum fan-out (unlike modal_embed_sand.py,
+which runs all of a wrapper's variants inside one container per dataset).
 
     modal run scripts/modal_embed_chemeleon.py
     modal run scripts/modal_embed_chemeleon.py --models chemeleon_original --datasets reg_openadmet_pxr_pEC50
     modal run scripts/modal_embed_chemeleon.py --modal-gpu A10G
 
-Checkpoints are not baked into the image at build time (unlike SAND's public
-GitHub `curl`): their only source is the `ensemble-aware-admet` Modal volume,
-and image *build* steps don't have Modal API credentials available to them.
-Instead, that volume is mounted read-only at *runtime*, and each call symlinks
-just the one checkpoint file its model_name needs into
-model_wrappers/chemeleon/checkpoints/ before invoking embed.py -- the shared
-image (chemprop + pinned torch only) is built once and reused for every call.
+The published checkpoint is downloaded into the image at build time and
+symlinked into model_wrappers/chemeleon/checkpoints/ before invoking embed.py.
 
 Before running for the first time, upload data/prepared to the Volume (same
 one modal_embed.py uses) if not already there:
@@ -35,9 +29,8 @@ import modal
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
 VOLUME_NAME = "ml-embedding-benchmark"
-CHECKPOINT_VOLUME_NAME = "ensemble-aware-admet"
 MOUNT = pathlib.Path("/data")
-CHECKPOINT_MOUNT = pathlib.Path("/ensemble-aware-admet")
+CHECKPOINT_DIR = pathlib.Path("/checkpoints")
 
 DATASETS = [
     "reg_openadmet_expansionrx_Log_Caco_ER",
@@ -59,23 +52,14 @@ DATASETS = [
     "reg_openadmet_pxr_pEC50",
 ]
 
-# model_name -> (remote path on the ensemble-aware-admet volume, local
-# filename expected by model_wrappers/chemeleon/wrapper.py's _VARIANTS).
-# Kept in sync with wrapper.py by hand, same as modal_embed.py's WRAPPERS
-# dict duplicates each wrapper's own init.sh metadata.
+# model_name -> (download URL, local filename expected by
+# model_wrappers/chemeleon/wrapper.py's and finetune.py's _VARIANTS).
 CHECKPOINTS = {
-    "chemeleon_original": ("checkpoints/chemeleon/chemeleon_mp.pt", "chemeleon_mp.pt"),
-    "chemeleon_pubchem_3d_mean": ("checkpoints/test-pubchem-mean-3d-only/best.ckpt", "chemeleon_pubchem_3d_mean.ckpt"),
-    "chemeleon_pubchem_3d_boltzmann": ("checkpoints/test-pubchem-boltzmann-3d-only/best.ckpt", "chemeleon_pubchem_3d_boltzmann.ckpt"),
-    "chemeleon_pubchem_both_mean": ("checkpoints/test-pubchem-3d-and-mordred-mean/best.ckpt", "chemeleon_pubchem_both_mean.ckpt"),
-    "chemeleon_pubchem_both_boltzmann": ("checkpoints/test-pubchem-3d-and-mordred-boltzmann/best.ckpt", "chemeleon_pubchem_both_boltzmann.ckpt"),
-    "chemeleon_chembl3d_both_boltzmann": ("checkpoints/test-chembl3d-boltzmann-both/best.ckpt", "chemeleon_chembl3d_both_boltzmann.ckpt"),
-    "chemeleon_geomdrugs_both_boltzmann": ("checkpoints/test-geom-drugs-boltzmann-both/best.ckpt", "chemeleon_geomdrugs_both_boltzmann.ckpt"),
+    "chemeleon_original": ("https://zenodo.org/records/15460715/files/chemeleon_mp.pt", "chemeleon_mp.pt"),
 }
 
 app = modal.App("ml-embedding-benchmark-chemeleon")
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
-checkpoint_volume = modal.Volume.from_name(CHECKPOINT_VOLUME_NAME)
 
 
 def build_image() -> modal.Image:
@@ -88,6 +72,11 @@ def build_image() -> modal.Image:
             # torch>=2.1 dependency is unpinned and would otherwise resolve a
             # wheel needing a newer CUDA driver than some GPU nodes have.
             "torch==2.5.1", "chemprop==2.2.4",
+        )
+        .apt_install("curl")
+        .run_commands(
+            f"mkdir -p {CHECKPOINT_DIR}",
+            *(f"curl -fL -o {CHECKPOINT_DIR}/{name} {url}" for url, name in CHECKPOINTS.values()),
         )
         .add_local_dir(
             PROJECT_ROOT / "model_wrappers" / "chemeleon",
@@ -110,7 +99,7 @@ def _run_embed_chemeleon(model_name: str, dataset_name: str, force: bool = False
     os.makedirs(f"{project_root}/data", exist_ok=True)
     (MOUNT / "embedded").mkdir(parents=True, exist_ok=True)
     # Modal warm-starts containers across multiple .spawn() calls (confirmed
-    # live: the first ~16 of 119 calls succeeded, then every later one failed
+    # live: the first ~16 of 119 calls in an earlier run succeeded, then every later one failed
     # with `FileExistsError: /project/data/prepared` from a reused
     # container's prior symlink) -- guard every symlink the same way the
     # checkpoint one below already is.
@@ -119,11 +108,11 @@ def _run_embed_chemeleon(model_name: str, dataset_name: str, force: bool = False
     if not os.path.exists(f"{project_root}/data/embedded"):
         os.symlink(str(MOUNT / "embedded"), f"{project_root}/data/embedded", target_is_directory=True)
 
-    remote_path, local_name = CHECKPOINTS[model_name]
+    _, local_name = CHECKPOINTS[model_name]
     os.makedirs(f"{wrapper_dir}/checkpoints", exist_ok=True)
     checkpoint_dst = f"{wrapper_dir}/checkpoints/{local_name}"
     if not os.path.exists(checkpoint_dst):
-        os.symlink(str(CHECKPOINT_MOUNT / remote_path), checkpoint_dst)
+        os.symlink(str(CHECKPOINT_DIR / local_name), checkpoint_dst)
 
     env = dict(os.environ)
     env["PYTHONPATH"] = f"{project_root}:{wrapper_dir}"
@@ -150,7 +139,7 @@ IMAGE = build_image()
 embed_chemeleon = app.function(
     name="embed_chemeleon",
     image=IMAGE,
-    volumes={str(MOUNT): volume, str(CHECKPOINT_MOUNT): checkpoint_volume},
+    volumes={str(MOUNT): volume},
     gpu="T4",
     cpu=4.0,
     timeout=60 * 30,  # one (model, dataset) pair per call -- far shorter than a multi-variant-per-container run
@@ -165,9 +154,9 @@ def main(
     modal_cpu: float = 0,
     force: bool = False,
 ):
-    """--models: comma-separated model_name values (default: all 7).
+    """--models: comma-separated model_name values (default: all).
     --datasets: comma-separated dataset names (default: all 17).
-    Spawns one Modal container per (model, dataset) pair -- all 7 x 17 = 119 by default.
+    Spawns one Modal container per (model, dataset) pair.
     --modal-gpu: override GPU type (default: T4). Pass "none" for CPU-only.
     --modal-cpu: override CPU core count (default: 4).
     --force: recompute and overwrite even if a cached .joblib already exists."""

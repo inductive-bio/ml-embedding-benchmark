@@ -1,5 +1,5 @@
 """Fine-tune MAT/R-MAT/GROVER end-to-end on Modal, one container per
-(dataset, model variant) -- see docs/finetuning_plan.md's Tier 1 rollout.
+(dataset, model variant).
 
     modal run scripts/modal_finetune_huggingmolecules.py --datasets reg_openadmet_pxr_pEC50 --model-names mat_masking_20M
     modal run scripts/modal_finetune_huggingmolecules.py --model-names grover_large,rmat_4M

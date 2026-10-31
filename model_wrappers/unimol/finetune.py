@@ -9,9 +9,8 @@ the val split is still requested from the shared loader (unused here) only so
 every wrapper's adapter sees the same three-way split contract.
 
 Must be run with this wrapper's own venv (model_wrappers/unimol/venv, Python
-3.10, unimol_tools installed) -- see docs/openadmet_migration_status.md's
-"Local run recipe" for how to activate it, or scripts/modal_embed_unimol.py
-for the Modal image this reuses.
+3.10, unimol_tools installed; built by embed_wrapper.sh) -- or see
+scripts/modal_embed_unimol.py for the Modal image this reuses.
 
 Usage:
     python model_wrappers/unimol/finetune.py --dataset reg_openadmet_expansionrx_LogD

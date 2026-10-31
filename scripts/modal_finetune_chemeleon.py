@@ -1,20 +1,16 @@
 """Fine-tune a pretrained Chemeleon encoder end-to-end (encoder + fresh
 single-task regression head) on Modal, one container per (model variant,
-dataset) pair -- see docs/e2e_chemprop_chemeleon_plan.md.
+dataset) pair.
 
     modal run scripts/modal_finetune_chemeleon.py --models chemeleon_original --datasets reg_openadmet_polaris_admet_KSOL
     modal run scripts/modal_finetune_chemeleon.py --modal-gpu T4
 
-Checkpoints are not baked into the image at build time (image build steps
-don't have Modal API credentials available to them) -- the `ensemble-aware-
-admet` volume is mounted read-only at runtime instead, and each call symlinks
-just the one checkpoint file its model_name needs, mirroring
-scripts/modal_embed_chemeleon.py exactly.
+The published checkpoint is downloaded into the image at build time, the same
+way scripts/modal_embed_chemeleon.py does.
 
-Before running for the first time, data/prepared (and, for the frozen-
-embedding comparison already in data/errors/data/finetune_errors) must
-already be on the ml-embedding-benchmark Volume -- confirmed present. Pull
-results back locally with:
+Before running for the first time, upload data/prepared to the
+ml-embedding-benchmark Volume (see scripts/modal_embed.py). Pull results back
+locally with:
 
     modal volume get ml-embedding-benchmark /finetune_errors data/finetune_errors
     modal volume get ml-embedding-benchmark /finetune_checkpoints data/finetune_checkpoints
@@ -26,9 +22,8 @@ import modal
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
 VOLUME_NAME = "ml-embedding-benchmark"
-CHECKPOINT_VOLUME_NAME = "ensemble-aware-admet"
 MOUNT = pathlib.Path("/data")
-CHECKPOINT_MOUNT = pathlib.Path("/ensemble-aware-admet")
+CHECKPOINT_DIR = pathlib.Path("/checkpoints")
 
 DATASETS = [
     "reg_openadmet_expansionrx_Log_Caco_ER",
@@ -50,23 +45,14 @@ DATASETS = [
     "reg_openadmet_pxr_pEC50",
 ]
 
-# model_name -> (remote path on the ensemble-aware-admet volume, local
-# filename expected by model_wrappers/chemeleon/finetune.py's _VARIANTS).
-# Kept in sync by hand, same convention scripts/modal_embed_chemeleon.py's
-# CHECKPOINTS dict already uses.
+# model_name -> (download URL, local filename expected by
+# model_wrappers/chemeleon/wrapper.py's and finetune.py's _VARIANTS).
 CHECKPOINTS = {
-    "chemeleon_original": ("checkpoints/chemeleon/chemeleon_mp.pt", "chemeleon_mp.pt"),
-    "chemeleon_pubchem_3d_mean": ("checkpoints/test-pubchem-mean-3d-only/best.ckpt", "chemeleon_pubchem_3d_mean.ckpt"),
-    "chemeleon_pubchem_3d_boltzmann": ("checkpoints/test-pubchem-boltzmann-3d-only/best.ckpt", "chemeleon_pubchem_3d_boltzmann.ckpt"),
-    "chemeleon_pubchem_both_mean": ("checkpoints/test-pubchem-3d-and-mordred-mean/best.ckpt", "chemeleon_pubchem_both_mean.ckpt"),
-    "chemeleon_pubchem_both_boltzmann": ("checkpoints/test-pubchem-3d-and-mordred-boltzmann/best.ckpt", "chemeleon_pubchem_both_boltzmann.ckpt"),
-    "chemeleon_chembl3d_both_boltzmann": ("checkpoints/test-chembl3d-boltzmann-both/best.ckpt", "chemeleon_chembl3d_both_boltzmann.ckpt"),
-    "chemeleon_geomdrugs_both_boltzmann": ("checkpoints/test-geom-drugs-boltzmann-both/best.ckpt", "chemeleon_geomdrugs_both_boltzmann.ckpt"),
+    "chemeleon_original": ("https://zenodo.org/records/15460715/files/chemeleon_mp.pt", "chemeleon_mp.pt"),
 }
 
 app = modal.App("ml-embedding-benchmark-chemeleon-finetune")
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
-checkpoint_volume = modal.Volume.from_name(CHECKPOINT_VOLUME_NAME)
 
 
 def build_image() -> modal.Image:
@@ -79,6 +65,11 @@ def build_image() -> modal.Image:
             # dependency is unpinned and would otherwise resolve a wheel
             # needing a newer CUDA driver than some GPU nodes have.
             "torch==2.5.1", "chemprop==2.2.4",
+        )
+        .apt_install("curl")
+        .run_commands(
+            f"mkdir -p {CHECKPOINT_DIR}",
+            *(f"curl -fL -o {CHECKPOINT_DIR}/{name} {url}" for url, name in CHECKPOINTS.values()),
         )
         .add_local_dir(
             PROJECT_ROOT / "model_wrappers" / "chemeleon",
@@ -122,11 +113,11 @@ def _run_finetune_chemeleon(
         if not os.path.lexists(dst):
             os.symlink(str(src), dst, target_is_directory=True)
 
-    remote_path, local_name = CHECKPOINTS[model_name]
+    _, local_name = CHECKPOINTS[model_name]
     checkpoint_path = f"{wrapper_dir}/checkpoints/{local_name}"
     os.makedirs(f"{wrapper_dir}/checkpoints", exist_ok=True)
     if not os.path.lexists(checkpoint_path):
-        os.symlink(str(CHECKPOINT_MOUNT / remote_path), checkpoint_path)
+        os.symlink(str(CHECKPOINT_DIR / local_name), checkpoint_path)
 
     env = dict(os.environ)
     env["PYTHONPATH"] = project_root
@@ -171,7 +162,7 @@ IMAGE = build_image()
 finetune_chemeleon = app.function(
     name="finetune_chemeleon",
     image=IMAGE,
-    volumes={str(MOUNT): volume, str(CHECKPOINT_MOUNT): checkpoint_volume},
+    volumes={str(MOUNT): volume},
     cpu=4.0,
     memory=8192,
     timeout=60 * 60 * 3,
@@ -190,9 +181,9 @@ def main(
     warmup_epochs: int = 0,
     force: bool = False,
 ):
-    """--models: comma-separated model_name values (default: all 7).
+    """--models: comma-separated model_name values (default: all).
     --datasets: comma-separated dataset names (default: all 17).
-    Spawns one Modal container per (model, dataset) pair -- all 7 x 17 = 119 by default.
+    Spawns one Modal container per (model, dataset) pair.
     --epochs: max epochs, early-stopped on val_loss (default 50, as in the
     authors' evaluate.py).
     --batch-size / --patience: see model_wrappers/chemeleon/finetune.py defaults.

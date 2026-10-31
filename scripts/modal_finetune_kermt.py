@@ -132,8 +132,7 @@ def _run_finetune_kermt(
     result = subprocess.run(cmd, cwd=project_root, env=env, capture_output=True, text=True)
     # Written to the Volume rather than relied on via `print()` -- KERMT's own
     # training loop is tqdm/logger-heavy and can flood/truncate Modal's
-    # captured log before a real traceback ever shows up there (same issue
-    # docs/openadmet_migration_status.md hit with ChemFM's embedding run).
+    # captured log before a real traceback ever shows up there.
     log_name = f"kermt_{run_tag}" if run_tag else "kermt"
     log_path = log_dir / f"{log_name}.log"
     log_path.write_text(f"=== stdout ===\n{result.stdout}\n=== stderr ===\n{result.stderr}\n")

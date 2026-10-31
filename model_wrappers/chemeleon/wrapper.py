@@ -12,39 +12,18 @@ from chemprop.nn import BondMessagePassing, MeanAggregation, RegressionFFN
 from src.common.types import SmilesEmbedder
 from src.common.utils import batch, get_device
 
-# Local checkpoint filenames, as downloaded by init.sh from the
-# ensemble-aware-admet Modal volume (see that repo's
-# src/models/chemeleon_3d.py / chemeleon_finetune.py for the pretraining code).
+# Local checkpoint filenames, as downloaded by init.sh.
 _VARIANTS = {
     "chemeleon_original": "chemeleon_mp.pt",
-    "chemeleon_pubchem_3d_mean": "chemeleon_pubchem_3d_mean.ckpt",
-    "chemeleon_pubchem_3d_boltzmann": "chemeleon_pubchem_3d_boltzmann.ckpt",
-    "chemeleon_pubchem_both_mean": "chemeleon_pubchem_both_mean.ckpt",
-    "chemeleon_pubchem_both_boltzmann": "chemeleon_pubchem_both_boltzmann.ckpt",
-    "chemeleon_chembl3d_both_boltzmann": "chemeleon_chembl3d_both_boltzmann.ckpt",
-    "chemeleon_geomdrugs_both_boltzmann": "chemeleon_geomdrugs_both_boltzmann.ckpt",
 }
 
 
 def _load_mpnn(checkpoint_path: str, map_location) -> MPNN:
-    """Load either checkpoint format into a full MPNN, so `.fingerprint()` can be
-    called identically regardless of which one this is.
-
-    - Lightning-format checkpoints (this project's own pretraining runs; carry
-      a "pytorch-lightning_version" key) load directly via
-      `MPNN.load_from_checkpoint` -- the base class, not the `ChemeleonMPNN`
-      training subclass, since the latter adds no inference-time behavior.
-      All were trained with `agg=MeanAggregation()` and `batch_norm=False`.
-    - The raw encoder-only checkpoint (the original externally-published
-      Chemeleon weights) has no agg/predictor/bn to load, so this builds a
-      fresh `MeanAggregation()` and a throwaway `RegressionFFN` (never
-      invoked -- only `.fingerprint()` is ever called) purely to satisfy
-      `MPNN.__init__`.
+    """The published checkpoint is encoder-only, so this builds a fresh
+    `MeanAggregation()` and a throwaway `RegressionFFN` (never invoked -- only
+    `.fingerprint()` is ever called) purely to satisfy `MPNN.__init__`.
     """
     raw = torch.load(checkpoint_path, map_location=map_location, weights_only=False)
-    if "pytorch-lightning_version" in raw:
-        return MPNN.load_from_checkpoint(checkpoint_path, map_location=map_location)
-
     mp = BondMessagePassing(**raw["hyper_parameters"])
     mp.load_state_dict(raw["state_dict"])
     predictor = RegressionFFN(n_tasks=1, input_dim=mp.output_dim)

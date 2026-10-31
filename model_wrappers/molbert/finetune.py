@@ -2,8 +2,8 @@
 score it on the same held-out test split the frozen-embedding path uses.
 
 Must be run with this wrapper's own Python 3.7.17 / pytorch-lightning==0.8.4 /
-torch==1.4.0 environment -- either the local pyenv venv (see
-docs/openadmet_migration_status.md's "Local run recipe") or, on Modal, the
+torch==1.4.0 environment -- either the local pyenv venv (built by
+embed_wrapper.sh) or, on Modal, the
 side-by-side interpreter Dockerfile.modal builds (see
 scripts/modal_finetune_molbert.py). torch==1.4.0's PyPI wheel bundles CUDA
 support directly (confirmed against both a local GPU and a Modal T4), so

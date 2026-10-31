@@ -53,8 +53,7 @@ already be on the Modal Volume (same volume modal_embed.py writes to):
 Run detached -- this fans out to (up to) ~57 embeddings x 3 methods x 17
 endpoints ~= 2900 containers, and a non-detached `modal run` tears down the
 whole app (killing every still-running container) the moment the local client
-disconnects, same gotcha documented in scripts/modal_embed.py /
-docs/openadmet_migration_status.md:
+disconnects, same gotcha documented in scripts/modal_embed.py:
 
     modal run --detach scripts/modal_score_errors.py
     modal run --detach scripts/modal_score_errors.py --methods rf
@@ -66,8 +65,8 @@ docs/openadmet_migration_status.md:
 
 Detached runs return immediately after spawning; check progress via
 `modal app list` / `modal app logs <app-id>`, and Volume contents directly
-(`modal volume ls ml-embedding-benchmark /errors`) as ground truth per the same
-"modal app logs has been unreliable" note in docs/openadmet_migration_status.md.
+(`modal volume ls ml-embedding-benchmark /errors`) as ground truth, since
+`modal app logs` has been unreliable.
 
 After it completes, pull results back:
 

@@ -1,5 +1,5 @@
 name: reg_openadmet_polaris_potency_pIC50_MERS_CoV_Mpro
-metric: spearmancorr  # provisional -- regression scoring/metric choice deferred, see docs/data_sources/
+metric: spearmancorr  # CV score used to select each embedding's regression head
 task: regression
 
 source:

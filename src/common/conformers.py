@@ -1,13 +1,10 @@
 """ETKDG + MMFF conformer generation, shared by any wrapper that needs a 3D
 conformer for a molecule given only its SMILES.
 
-Exposes two levels of theory (per docs/embedding_expansion_plan.md's
-ablation): `first_etkdg_conformer` (raw ETKDG distance-geometry embedding, no
-force-field refinement) and `best_mmff94s_conformer` (ETKDG ensemble + MMFF94s
-optimization, UFF fallback, lowest-energy pick). Ported from
-ensemble-aware-admet/conformer_generation/ensemble_generation.py
-(create_etkdg_ensemble, mmff_optimize) -- that module's xTB/GFN2 refinement is
-not ported.
+Exposes two levels of theory: `first_etkdg_conformer` (raw ETKDG
+distance-geometry embedding, no force-field refinement) and
+`best_mmff94s_conformer` (ETKDG ensemble + MMFF94s optimization, UFF fallback,
+lowest-energy pick).
 """
 import copy
 import os

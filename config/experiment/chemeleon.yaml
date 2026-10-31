@@ -5,4 +5,4 @@ defaults:
 hydra:
   sweeper:
     params:
-      +model_name: chemeleon_original,chemeleon_pubchem_3d_mean,chemeleon_pubchem_3d_boltzmann,chemeleon_pubchem_both_mean,chemeleon_pubchem_both_boltzmann,chemeleon_chembl3d_both_boltzmann,chemeleon_geomdrugs_both_boltzmann
+      +model_name: chemeleon_original

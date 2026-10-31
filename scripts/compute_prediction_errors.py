@@ -1,7 +1,7 @@
 """Fit one regression head to one embedding, across all OpenADMET endpoints,
 and save the per-compound test-set prediction error for each endpoint.
 
-Deliberately independent of this repo's Hydra-based embed.py/score.py: dataset
+Deliberately independent of this repo's Hydra-based embed.py: dataset
 configs here are flat (no `defaults:` composition), so a plain YAML read is
 enough and avoids Hydra's cwd-switching, which would just complicate reuse
 from Modal.

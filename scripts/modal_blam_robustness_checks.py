@@ -1,8 +1,8 @@
 """Run scripts/blam_robustness_checks.py's endpoint_psi and
-endpoint_psi_sensitivity tests (docs/draft.tex app:endpoint-correlation) on
+endpoint_psi_sensitivity tests (endpoint residual correlation) on
 Modal, against an already-fitted posterior.joblib already on the Volume (put
-there by scripts/modal_blam_analysis.py's `finalize` stage, e.g.
-blam_v2_monroe/posterior.joblib).
+there by scripts/modal_blam_analysis.py's `finalize` stage, blam/posterior.joblib
+by default).
 
 Two independent local entrypoints, one per test, both following the same
 3-stage fan-out as modal_blam_analysis.py: one `prepare` call loads the
@@ -22,7 +22,7 @@ Usage:
     modal run --detach scripts/modal_blam_robustness_checks.py::app.endpoint_psi
     modal run --detach scripts/modal_blam_robustness_checks.py::app.endpoint_psi --num-replicates 200
     modal run --detach scripts/modal_blam_robustness_checks.py::app.endpoint_psi_sensitivity
-    modal run --detach scripts/modal_blam_robustness_checks.py::app.endpoint_psi_sensitivity --num-chains 16 --posterior-subdir blam_v2
+    modal run --detach scripts/modal_blam_robustness_checks.py::app.endpoint_psi_sensitivity --num-chains 16 --posterior-subdir blam
 
 Run detached for the same reason as modal_blam_analysis.py: a non-detached
 `modal run` tears down every in-flight container if the local client
@@ -38,7 +38,7 @@ import modal
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
 VOLUME_NAME = "ml-embedding-benchmark"
 MOUNT = pathlib.Path("/data")
-POSTERIOR_SUBDIR = "blam_v2_monroe"
+POSTERIOR_SUBDIR = "blam"
 # Must match blam_robustness_checks.py's constants of the same name --
 # duplicated here only so the local entrypoints can print/loop over them
 # without importing a jax/numpyro-dependent module into the local process
@@ -115,7 +115,7 @@ def _prepare_psi(posterior_subdir: str):
         "endpoint_params": {
             s.name: {
                 "mu": float(np.asarray(samples[f"mu__{s.name}"]).mean()),
-                "a": float(np.asarray(samples[f"beta__{s.name}"]).mean()),
+                "a": float(np.asarray(samples[f"a__{s.name}"]).mean()),
                 "omega": float(np.asarray(samples[f"omega__{s.name}"]).mean()),
             }
             for s in stats
@@ -208,7 +208,7 @@ def _prepare_sensitivity(posterior_subdir: str):
 
     theta_orig = np.asarray(samples["theta"]).mean(axis=0)
     kappa = np.array([
-        float(np.asarray(samples[f"beta__{s.name}"]).mean() / np.asarray(samples[f"omega__{s.name}"]).mean())
+        float(np.asarray(samples[f"a__{s.name}"]).mean() / np.asarray(samples[f"omega__{s.name}"]).mean())
         for s in stats
     ])
     prior_log_s = float(np.log(compute_prior_scale(stats) / np.sqrt(2)))

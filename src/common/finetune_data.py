@@ -1,5 +1,5 @@
 """Shared train/val/test split loading for end-to-end fine-tuning, used by
-every model_wrappers/<name>/finetune.py -- see docs/finetuning_plan.md.
+every model_wrappers/<name>/finetune.py.
 
 Reads data/prepared/<dataset_name>.joblib rather than
 data/processed/<source>/<endpoint>.csv directly, since that's the same

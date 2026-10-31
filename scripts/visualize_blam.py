@@ -11,7 +11,7 @@ Six outputs:
     the ranked list one embedding at a time (top/best to bottom/worst) with
     that row highlighted -- embeds natively into tools like Google Slides.
   - A static bar chart (PNG, --compare-ecfp) of P(embedding > ECFP) per
-    docs/bayesian_model.md's delta_{i,ECFP} construction, with a two-sided
+    the paper's delta_{i,ECFP} construction (App. C.5), with a two-sided
     p-value analog for significance.
   - An animated GIF counterpart to that same chart (--compare-ecfp-gif),
     stepping through embeddings one at a time like --theta-gif.
@@ -139,7 +139,7 @@ def load_posterior(path: str) -> dict:
 
 def compute_mae_summary(posterior: dict) -> pd.DataFrame:
     """Raw per-(endpoint, embedding) MAE -- EndpointStat.y_hat is exactly this
-    (docs/bayesian_model.md Step 2's per-embedding mean |error|), computed
+    (the paper's App. B.5 Step 2 per-embedding mean |error|), computed
     before any Bayesian fitting. mae_se is the standard error of that mean,
     from V_e's diagonal (Step 3's sampling covariance)."""
     rows = []
@@ -156,12 +156,11 @@ def compute_mae_summary(posterior: dict) -> pd.DataFrame:
 
 
 def compute_ecfp_comparison(posterior: dict, baseline: str, seed: int = 0) -> pd.DataFrame:
-    """The doc's P(i > j) "parity with the original BBT paper" construction
-    (docs/bayesian_model.md, end of "Concrete Sketch of Steps"): for each
+    """The paper's new-endpoint P(i > j) construction (Eq. 8, App. C.5): for each
     posterior draw s, sample a hypothetical new endpoint's discrimination and
     specialization noise from that draw's hyper-parameters, then
 
-        P^(s) = Phi(beta_new^(s) * delta_{i,baseline}^(s) / (sqrt(2) * omega_new^(s)))
+        P^(s) = Phi(a_new^(s) * delta_{i,baseline}^(s) / (sqrt(2) * omega_new^(s)))
 
     averaged over draws. This is the probability embedding i beats `baseline`
     on a new, unseen endpoint, not just that its overall ability theta_i is
@@ -179,12 +178,12 @@ def compute_ecfp_comparison(posterior: dict, baseline: str, seed: int = 0) -> pd
     theta_baseline = theta[:, global_embeddings.index(baseline)]
 
     # One hypothetical new endpoint per posterior draw, shared across every
-    # embedding compared against `baseline` in that draw -- matching the
-    # doc's single beta_new^(s), omega_new^(s) per draw s.
+    # embedding compared against `baseline` in that draw -- matching
+    # the paper's single a_new^(s), omega_new^(s) per draw s.
     rng = np.random.default_rng(seed)
-    sigma_beta = np.asarray(samples["sigma_beta"])  # (S,)
+    sigma_a = np.asarray(samples["sigma_a"])  # (S,)
     sigma_omega = np.asarray(samples["sigma_omega"])  # (S,)
-    beta_new = np.abs(rng.normal(0.0, sigma_beta))
+    a_new = np.abs(rng.normal(0.0, sigma_a))
     omega_new = np.abs(rng.normal(0.0, sigma_omega))
 
     rows = []
@@ -192,13 +191,16 @@ def compute_ecfp_comparison(posterior: dict, baseline: str, seed: int = 0) -> pd
         if embedding == baseline:
             continue
         delta = theta[:, i] - theta_baseline
-        prob_draws = ndtr(beta_new * delta / (np.sqrt(2) * omega_new))
+        prob_draws = ndtr(a_new * delta / (np.sqrt(2) * omega_new))
         prob_beat = float(prob_draws.mean())
         rows.append({
             "embedding": embedding,
             "prob_beat_baseline": prob_beat,
             "p_value": 2 * min(prob_beat, 1 - prob_beat),
             "delta_mean": float(delta.mean()),
+            "delta_ci90_low": float(np.percentile(delta, 5)),
+            "delta_ci90_high": float(np.percentile(delta, 95)),
+            "prob_delta_positive": float((delta > 0).mean()),
         })
     return pd.DataFrame(rows).sort_values("prob_beat_baseline").reset_index(drop=True)
 
@@ -209,16 +211,16 @@ def compute_endpoint_ecfp_comparison(posterior: dict, baseline: str) -> pd.DataF
     learned about it -- NOT compute_ecfp_comparison's "would i beat baseline
     on a hypothetical new endpoint" question (that one legitimately
     integrates out u_ie/u_je as fresh, never-observed noise via resampled
-    beta_new/omega_new). Reusing that same Phi(beta_e*delta/(sqrt2*omega_e))
-    construction here with endpoint e's own fitted beta_e/omega_e would be a
+    a_new/omega_new). Reusing that same Phi(a_e*delta/(sqrt2*omega_e))
+    construction here with endpoint e's own fitted a_e/omega_e would be a
     subtler version of the same mistake, since blam_analysis.py's
     compute_specialization() already sampled u_ie/u_je from their posterior
     conditional given endpoint e's actual data (posterior["u_by_endpoint"]).
 
-    So this plugs those real per-draw u_ie/u_je into docs/bayesian_model.md's
-    margin decomposition (line 108):
+    So this plugs those real per-draw u_ie/u_je into the paper's margin
+    decomposition (Eq. 58):
 
-        d_ije^(s) = beta_e^(s) * (theta_i^(s) - theta_j^(s)) + (u_je^(s) - u_ie^(s))
+        d_ije^(s) = a_e^(s) * (theta_i^(s) - theta_j^(s)) + (u_je^(s) - u_ie^(s))
 
     and P(i > baseline) is the empirical fraction of draws with d_ije^(s) > 0
     -- no Phi() closed form needed, since it's just counting how often the
@@ -238,7 +240,7 @@ def compute_endpoint_ecfp_comparison(posterior: dict, baseline: str) -> pd.DataF
     for stat in posterior["stats"]:
         if baseline not in stat.embeddings:
             continue
-        beta_e = np.asarray(samples[f"beta__{stat.name}"])  # (S,)
+        a_e = np.asarray(samples[f"a__{stat.name}"])  # (S,)
         u_e = u_by_endpoint[stat.name]  # (S, n_e), column order matches stat.embeddings
         baseline_col = stat.embeddings.index(baseline)
         theta_baseline = stat.theta_samples[:, baseline_col]  # (S,)
@@ -246,7 +248,7 @@ def compute_endpoint_ecfp_comparison(posterior: dict, baseline: str) -> pd.DataF
         for col, embedding in enumerate(stat.embeddings):
             if embedding == baseline:
                 continue
-            d = beta_e * (stat.theta_samples[:, col] - theta_baseline) + (u_baseline - u_e[:, col])
+            d = a_e * (stat.theta_samples[:, col] - theta_baseline) + (u_baseline - u_e[:, col])
             prob_beat = float((d > 0).mean())
             rows.append({
                 "endpoint": stat.name,
@@ -1286,14 +1288,14 @@ function updateHeader() {{
   const ep = currentEndpoint();
   document.getElementById("chart-title").textContent = `P(embedding beats ${{DATA.baseline}}) \\u2013 ${{ep.label}}`;
   document.getElementById("chart-subtitle").textContent = ep.synthetic
-    ? "Per posterior draw, a fresh discrimination/noise (beta_new, omega_new) is sampled from the fitted "
-      + "hyper-priors and P = Phi(beta_new * (theta_i - theta_" + DATA.baseline + ") / (sqrt(2) * omega_new)) -- "
-      + "this is the model's answer for a hypothetical endpoint it has never seen, per docs/bayesian_model.md's "
-      + "new-endpoint construction. Significance uses a two-sided p-value analog: p = 2 * min(P, 1-P), flagged "
+    ? "Per posterior draw, a fresh discrimination/noise (a_new, omega_new) is sampled from the fitted "
+      + "hyper-priors and P = Phi(a_new * (theta_i - theta_" + DATA.baseline + ") / (sqrt(2) * omega_new)) -- "
+      + "this is the model's answer for a hypothetical endpoint it has never seen (the paper's Eq. 8). "
+      + " Significance uses a two-sided p-value analog: p = 2 * min(P, 1-P), flagged "
       + `at alpha = ${{DATA.alpha}}.`
-    : "Per posterior draw, using this endpoint's own fitted theta/beta_e and already-recovered specialization "
+    : "Per posterior draw, using this endpoint's own fitted theta/a_e and already-recovered specialization "
       + "(u_ie), P = fraction of draws where i's actual margin over " + DATA.baseline + " on this endpoint's data "
-      + "is positive (docs/bayesian_model.md's d_ije = beta_e*(theta_i-theta_j) + (u_je-u_ie)) -- this reflects "
+      + "is positive (the paper's d_ije = a_e*(theta_i-theta_j) + (u_je-u_ie)) -- this reflects "
       + "what was actually observed here, not a hypothetical rerun. Significance uses a two-sided p-value "
       + `analog: p = 2 * min(P, 1-P), flagged at alpha = ${{DATA.alpha}}.`;
   document.getElementById("legend-strong").textContent = `Significantly better (p < ${{DATA.alpha}})`;
@@ -1474,12 +1476,12 @@ def main():
     parser.add_argument("--theta-gif-frame-ms", type=int, default=900, help="Milliseconds each --theta-gif frame is shown")
     parser.add_argument(
         "--compare-ecfp", action="store_true",
-        help="Also write a bar chart of P(embedding > baseline) and a significance p-value, per docs/bayesian_model.md",
+        help="Also write a bar chart of P(embedding > baseline) and a significance p-value, per the paper's App. C.5",
     )
     parser.add_argument("--posterior-input", default="data/blam/posterior.joblib")
     parser.add_argument(
-        "--ecfp-baseline", default="ECFP",
-        help="Embedding name to use as the baseline for --compare-ecfp (default: ECFP, the uncounted fingerprint)",
+        "--ecfp-baseline", default="ECFP_count",
+        help="Embedding name to use as the baseline for --compare-ecfp (default: ECFP_count, the paper's baseline)",
     )
     parser.add_argument("--alpha", type=float, default=0.05, help="Significance threshold for --compare-ecfp's p-value")
     parser.add_argument("--compare-output", default="data/blam/ecfp_comparison.png")
@@ -1499,7 +1501,7 @@ def main():
     parser.add_argument("--endpoint-compare-output", default="data/blam/ecfp_endpoint_comparison.html")
     parser.add_argument(
         "--display-names", default=None,
-        help="Path to a JSON {raw_name: display_name} map (see data/blam_v2/model_display_names.json) used to "
+        help="Path to a JSON {raw_name: display_name} map (config/blam/model_display_names.json has the paper's labels) used to "
         "relabel embeddings everywhere they're plotted; fine-tuned entities ('<name>_finetuned') look up their "
         "base name and get a ' (fine-tuned)' suffix plus bold styling. Names missing from the map fall back to "
         "the raw name.",
@@ -1528,6 +1530,7 @@ def main():
     if args.compare_ecfp:
         comparison_df = compute_ecfp_comparison(posterior, args.ecfp_baseline, args.compare_seed)
         plot_ecfp_comparison(comparison_df, args.compare_output, args.ecfp_baseline, args.alpha, display_names)
+        comparison_df.to_csv(os.path.splitext(args.compare_output)[0] + ".csv", index=False)
 
     if args.compare_ecfp_gif:
         comparison_df = compute_ecfp_comparison(posterior, args.ecfp_baseline, args.compare_seed)

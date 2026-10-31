@@ -1,6 +1,5 @@
 """Fine-tune SimSon's pretrained Xtransformer encoder end-to-end on Modal,
-one T4 container per dataset -- see docs/finetuning_plan.md's Tier 3
-`simson` entry.
+one T4 container per dataset.
 
     modal run scripts/modal_finetune_simson.py --datasets reg_openadmet_pxr_pEC50
     modal run scripts/modal_finetune_simson.py

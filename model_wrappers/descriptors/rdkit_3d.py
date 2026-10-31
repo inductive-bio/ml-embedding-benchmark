@@ -1,7 +1,5 @@
 """912-dim RDKit 3D descriptor featurizer, operating on a Chem.Mol that
 already carries one conformer.
-
-Ported from ensemble-aware-admet/src/models/rdkit_3d.py (RDKit3DFeaturizer).
 """
 import numpy as np
 from rdkit.Chem import Descriptors3D, rdMolDescriptors

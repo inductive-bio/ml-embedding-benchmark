@@ -1,106 +1,105 @@
-# Benchmarking Pretrained Molecular Embedding Models For Molecular Representation Learning
+# A Latent Ability Model for Benchmarking Molecular Representations
 
-[![arXiv](https://img.shields.io/badge/arXiv-2508.06199-b31b1b.svg)](https://arxiv.org/abs/2508.06199)
+This repository contains the code and analysis scripts for "A Latent Ability Model for Benchmarking Molecular Representations". It extracts embeddings from pretrained chemical models, fine-tunes a subset of them end to end, scores everything on 17 ADMET regression endpoints, and ranks the resulting 48 representations (35 frozen embeddings and 13 end-to-end fine-tuned models) with a Bayesian latent ability model.
 
----
+The ranking model directly models each model's per-endpoint MAE as a function of latent ability, rather than reducing every comparison to a pairwise win as the Bayesian Bradley-Terry (BBT) model does. Under the exchangeable null, the BBT pairwise pseudo-likelihood inflates the variance of its estimate by a factor of (M+1)/3 for M models, independent of the number of endpoints. The latent ability model has one likelihood factor per endpoint, so it does not have this problem. See Sec. 3 and Apps. A and B of the paper for the derivation and model details. A standalone implementation of the method for any set of regression tasks scored on shared test sets is available at [nedassan/blam-analysis](https://github.com/nedassan/blam-analysis).
 
-This is a fork of the repository for "Benchmarking Pretrained Molecular Embedding Models For Molecular Representation Learning" by Mateusz Praski, Jakub Adamczyk, Wojciech Czech ([paper](https://arxiv.org/abs/2508.06199)), adapted by Inductive Bio in two ways:
+## Datasets
 
-- **Datasets**: the original TDC/MoleculeNet benchmarks are replaced with 17 regression endpoints from three OpenADMET challenges — [ExpansionRx](docs/data_sources/expansionrx.md), [Polaris antiviral ADMET/Potency](docs/data_sources/polaris_antiviral.md), and [PXR](docs/data_sources/pxr.md) — all of which concluded and were unblinded after every embedding model's pretraining cutoff. The original TDC/MoleculeNet tasks predate that cutoff, so a top-performing model there may simply have seen the test molecules during its own pretraining.
-- **Ranking methodology**: embeddings are ranked with a Bayesian latent-ability model that directly models the margin of error between models (the difference in log MAE) rather than reducing each comparison to a win/loss, as the original Bayesian Bradley-Terry approach does. That reduction discards information and understates ranking uncertainty (proven in [docs/bayesian_model.md](docs/bayesian_model.md); see "Ranking embeddings" below).
+The 17 endpoints come from three OpenADMET blind challenges: [ExpansionRx](https://huggingface.co/datasets/openadmet/openadmet-expansionrx-challenge-data) (9 endpoints), Polaris antiviral ADMET and potency (7 endpoints), and [PXR](https://huggingface.co/datasets/openadmet/pxr-challenge-train-test) (1 endpoint). Each was measured under a single protocol and released with a held-out test set, which is used as-is. All endpoints are modeled on a log10 scale. See [docs/datasets.md](docs/datasets.md) for sources, transforms, and exclusions.
 
 ## Requirements
 
 - Python >= 3.10, < 3.12
-- Pyenv for managing embedding model venvs
+- pyenv, for the per-model virtual environments
 
 ## Installation
 
-After you create a fresh venv (Python >=3.10,<3.12), run the following command to install the dependencies:
+In a fresh virtual environment, install the base dependencies:
 
 ```sh
 ./install_deps.sh
 ```
 
+Each model wrapper under `model_wrappers/` gets its own virtual environment, created by `embed_wrapper.sh` from that wrapper's `.python-version` and `init.sh`.
+
 ## Usage
 
-### 1. Prepare the OpenADMET datasets
+### 1. Prepare the datasets
 
-Download and clean the raw challenge data into `data/processed/<source>/<endpoint>.csv`:
+Clone the Polaris challenge examples repository, which holds the organizers' exclusion lists, then download and clean all 17 endpoints into `data/processed/<source>/<endpoint>.csv`:
+
 ```sh
+git clone https://github.com/asapdiscovery/asap-polaris-blind-challenge-examples data_repos/asap-polaris-blind-challenge-examples
 python scripts/prepare_openadmet_data.py
-```
-Then materialize the resulting `config/dataset/reg_openadmet_*.yaml` datasets, same as any other dataset:
-```sh
 python download.py --multirun '+dataset=glob(reg_openadmet_*)'
 ```
 
 ### 2. Compute embeddings
 
-To run the embedding procedure for an existing model, for all datasets, run the command:
+To embed every dataset with one wrapper:
+
 ```sh
-./embed_wrapper.sh /path/to/implementation # e.g. ./embed_wrapper.sh model_wrappers/huggingface
+./embed_wrapper.sh model_wrappers/huggingface
 ```
 
-If you want to run this in the background, you can use the shorthand command:
+`./run_embed.sh <wrapper>` runs the same thing in the background. The datasets are listed in `config/embed.yaml`, the available wrappers and their model variants in `config/experiment/`. Embeddings are saved as an [EmbeddedDataset](src/common/types.py) under `data/embedded/<dataset>/<model>.<joblib|json>`. Some older wrappers use a custom JSON serialization because their environments have incompatible pandas versions.
+
+`scripts/modal_embed*.py` run the same procedure on [Modal](https://modal.com). Descriptors computed on 3D conformers (Mordred with 3D descriptors and RDKit-3D, averaged over each molecule's conformer ensemble with Boltzmann or uniform weights) are produced by `scripts/modal_generate_conformers.py`, `scripts/modal_optimize_conformers.py`, `scripts/modal_embed_descriptors.py`, and `scripts/modal_embed_aggregated_conformers.py`.
+
+A small number of SMILES that some models cannot process (for example SELFIES translation failures or dative bonds) are listed in [config/illegal_smiles.txt](config/illegal_smiles.txt) and filtered out before embedding.
+
+### 3. Fine-tune end to end
+
+Models whose authors provide an end-to-end regression fine-tuning method are fine-tuned on each endpoint via `model_wrappers/<wrapper>/finetune.py` (`finetune_selformer.py` for SELFormer), following that method with one default learning rate per model (no per-endpoint search). Chemprop (2D and 3D features) is trained end to end from scratch via `model_wrappers/chemprop/finetune.py`. Fine-tuning scripts for SimSon and GROVER are also included but were not part of the paper's results. Results are written to `data/finetune_errors/<dataset>/<model>__finetuned.joblib`. `scripts/modal_finetune_<wrapper>.py` runs the same procedure on Modal.
+
+### 4. Score frozen embeddings
+
+For each (embedding, regression head) pair, `scripts/compute_prediction_errors.py` fits the head on the endpoint's training split and stores the per-compound test-set error:
+
 ```sh
-./run_embed.sh <implementation name> # e.g. ./run_embed.sh huggingface
+python scripts/compute_prediction_errors.py --embedding ECFP_count --method rf
 ```
 
-This will perform the embedding procedure on all defined datasets (see `config/embed.yaml` for the default list). `scripts/modal_embed.py` runs the same procedure on Modal, one container image per wrapper, for wrappers that don't need a legacy Python interpreter.
+Supported heads, with hyperparameters chosen by 5-fold CV (App. C.2). The CV score is Spearman correlation (the `metric` in each `config/dataset/*.yaml`), and it is also what `blam_analysis.py` uses to pick each embedding's best head:
 
-List of available implementations is defined under `config/experiment`.
-List of available datasets is defined under `config/dataset`.
+| Head | Search |
+|---|---|
+| `rf` | `min_samples_split` in {2, 4, 6, 8, 10}; 200 trees, `max_depth=20` |
+| `ridge` | `alpha` in 10 log-spaced values over [1e-2, 1e3], standardized features |
+| `knn` | `n_neighbors` in {1, 3, 5, 7, 9}, standardized features; Tanimoto-count distance for count embeddings, cosine otherwise |
+| `tabicl` | no search; 5-fold CV score, then one fit on all training data |
+| `tabpfn` | no search (TabPFN v3); same as `tabicl` |
 
-Embeddings will be saved as an [EmbeddedDataset](src/common/types.py) object under `data/embedded/<dataset>/model.<joblib/json>`, depending on the implementation. Due to the Pandas serialization format incompatibility in different environments, we implement a simple custom serialization of outputs from some older models.
+TabICL and TabPFN inputs are standardized and clamped to [-6, 6]. TabPFN's default checkpoint is gated on Hugging Face, so it needs an `HF_TOKEN` with access granted.
 
-In our benchmark study, some of the models required filtering of a small number of SMILES, e.g.: due to the SELFIES translation issues, or lack of support for dative bonds. Those SMILES are defined in [illegal_smiles.txt](config/illegal_smiles.txt) in the config directory. To reproduce those illegal SMILES as in the original articles, please refer to the `selfies_debugger.ipynb` notebook.
+`scripts/modal_score_errors.py` fans this out on Modal, one container per (embedding, head, endpoint). It runs only `rf`, `ridge`, and `knn` by default. `blam_analysis.py` only includes an embedding on an endpoint once all five heads have results, so pass `--methods rf,ridge,knn,tabicl,tabpfn`.
 
-### 3. (optional) Fine-tune end-to-end
+### 5. Fit the latent ability model
 
-Several wrappers also support end-to-end fine-tuning of the underlying pretrained model, instead of only scoring its frozen embeddings, via `model_wrappers/<wrapper>/finetune.py`. `scripts/modal_finetune_<wrapper>.py` runs the equivalent procedure on Modal.
+`scripts/blam_analysis.py` selects each embedding's best head per endpoint by CV score, builds the per-compound error matrix, and fits the model with NUTS in NumPyro (16 chains, 2,000 warmup and 4,000 sampling steps by default). To reproduce the 48 representations in the paper's Table 2:
 
-### 4. Compute per-compound prediction errors
-
-For each (embedding, regression head) pair, this fits on an endpoint's train+valid split (hyperparameters chosen by CV) and stores the per-compound test-set prediction error:
 ```sh
-python scripts/compute_prediction_errors.py --embedding ECFP --method rf
+python scripts/blam_analysis.py \
+    --errors-dir data/errors \
+    --finetune-errors-dir data/finetune_errors \
+    --embeddings-file config/blam/paper_embeddings.txt \
+    --finetuned-models-file config/blam/paper_finetuned_models.txt \
+    --output data/blam
 ```
-Supported heads: `rf`, `ridge`, `knn`, `tabicl`, `tabpfn`. `scripts/modal_score_errors.py` fans this out across Modal containers, one per (embedding, method, endpoint).
 
-### 5. Rank embeddings with the Bayesian latent-ability model (BLAM)
+The two list files hold the 35 frozen embeddings and 13 fine-tuned models used in the paper. Frozen model families with several variants were pruned to the variant with the best CV score; each fine-tuned family was run with a single variant. The script writes `posterior.joblib` and summary CSVs for latent ability, per-endpoint parameters, and per-endpoint specialization. `scripts/modal_blam_analysis.py` runs the chains as separate Modal containers.
 
-`scripts/blam_analysis.py` fits the hierarchical model described in [docs/bayesian_model.md](docs/bayesian_model.md) via NUTS (numpyro): for each endpoint, it picks each embedding's best-by-CV regression head, builds the per-compound error matrix, and fits a shared latent ability `θ` per embedding alongside per-endpoint difficulty/discrimination/specialization terms. Unlike a Bradley-Terry-style ranking, this models the population log-MAE margin between models directly, so uncertainty in the ranking isn't inflated by treating derived pairwise wins as independent observations.
-```sh
-python scripts/blam_analysis.py --errors-dir data/errors --output data/blam
-```
-`scripts/modal_blam_analysis.py` runs the fit on Modal. `scripts/visualize_blam.py` turns the posterior into ranking charts and interactive dashboards. `scripts/blam_robustness_checks.py` and `scripts/pl_variance_inflation.py` (the latter a Monte Carlo check of the variance-inflation derivation itself) validate the model's assumptions.
+### 6. Reports and checks
 
-## Testing your own model
+- `scripts/visualize_blam.py` turns the posterior into ranking charts, comparisons against the ECFP (count) baseline on observed and new endpoints (App. C.5, including Table 7's P(δ > 0), 90% interval, and new-endpoint win rate via `--compare-ecfp`), and interactive dashboards. Pass `--display-names config/blam/model_display_names.json` to use the paper's model labels.
+- `scripts/pl_variance_inflation.py` (and `scripts/modal_pl_variance_inflation.py` for the full NUTS replicate count) simulates BBT on Plackett-Luce rankings to check the variance inflation factor (App. A.6).
+- `scripts/blam_robustness_checks.py` runs additional sensitivity checks on the fitted model in `data/blam` (not reported in the paper).
 
-To test your own model, please implement a wrapper following the [instructions here](docs/custom_model.md). You can also refer to the existing implementations under `model_wrappers` directory.
+## Adding a model
 
-### Sharing your model
-
-If you want your model to be included in our latest benchmark, feel free to open a PR with your implementation. We will be happy to review it and include it in the results.
-
-## Tips on controlling number of threads
-
-This project relies on hydra multirun functionality to run experiments in parallel. By default, the embedding procedure does not perform multirun, however if you want to run multiple datasets at once, you can specify parameter `hydra.launcher.n_jobs` in the experiment config (`config/experiment/model_name.yaml`, see [fingerprints](config/experiment/fingerprints.yaml) for an example). When using multirun mode, you also need to override hydra launcher from default to `joblib` (as in fingerprints example). See more about hydra multirun [here](https://hydra.cc/docs/tutorials/basic/running_your_app/multi-run/) and [here](https://hydra.cc/docs/plugins/joblib_launcher/).
-
-## Cite 
-
-If you find this work useful in your research, please cite:
-
-```
-@article{praski2025benchmarking,
-  title={Benchmarking Pretrained Molecular Embedding Models For Molecular Representation Learning},
-  author={Praski, Mateusz and Adamczyk, Jakub and Czech, Wojciech},
-  journal={arXiv preprint arXiv:2508.06199},
-  year={2025}
-}
-```
+To benchmark another model, implement a wrapper following [docs/custom_model.md](docs/custom_model.md); the existing wrappers under `model_wrappers/` are working examples.
 
 ## License
 
-Feel free to use any parts of this project in your research. If you do so, please cite our paper as shown above. Due to the vast number of models used in this project, we're unable to provide a unified license for the entire repository. Please refer to the individual model implementations for their respective licenses.
+Model wrappers include or download third-party code and weights, each under its own license. See the individual directories under `model_wrappers/` for details.

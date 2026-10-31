@@ -3,8 +3,7 @@ no force-field optimization) for every unique molecule in the 3 OpenADMET
 challenges, and write them to the Modal Volume under /conformers.
 
 Deduplication is per-challenge, not global: the 17 endpoint datasets group
-into exactly 3 challenges (docs/data_sources/{expansionrx,polaris_antiviral,
-pxr}.md) -- ExpansionRx's 9 endpoints, Polaris antiviral's 7 (5 ADMET + 2
+into exactly 3 challenges (docs/datasets.md) -- ExpansionRx's 9 endpoints, Polaris antiviral's 7 (5 ADMET + 2
 Potency), and PXR's 1. Within a challenge, endpoints overwhelmingly share the
 same compound library (ExpansionRx: 36,003 rows -> 7,608 unique SMILES);
 across challenges there's essentially no overlap (13,756 summed per-challenge
