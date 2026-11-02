@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04@sha256:b3e7fba84d169f46939f00c25be7d016f712a8d651f4756d6a55e693d84d94f2
+FROM nvidia/cuda:13.4.3-cudnn-devel-ubuntu22.04@sha256:a67ac14e3947e63ad5ea4c46b0ee1b75fa621b9b5cced0b0b64cd2bc359f8d44
 COPY environment.yml /tmp/environment.yml
 
 # setup the web proxy for Internet access
